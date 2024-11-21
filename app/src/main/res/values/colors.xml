@@ -2,6 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="transparent">#00000000</color>
 
     <color name="green1">#F3FAF3</color>
     <color name="green2">#E3F5E3</color>
@@ -10,4 +11,16 @@
     <color name="green5">#48A54B</color>
     <color name="green6">#358437</color>
     <color name="green7">#2D682F</color>
+    <color name="green8">#28532A</color>
+    <color name="green9">#0E2510</color>
+
+    <color name="green_warm1">#F2F4E9</color>
+    <color name="green_warm2">#D4DBBB</color>
+    <color name="green_warm3">#B7C393</color>
+    <color name="green_warm4">#98A869</color>
+    <color name="green_warm5">#7F9052</color>
+    <color name="green_warm6">#62723E</color>
+    <color name="green_warm7">#4D5833</color>
+    <color name="green_warm8">#3F482C</color>
+
 </resources>
