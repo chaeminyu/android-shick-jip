@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.shickjip"
-    compileSdk = 34
+    compileSdk = 35
     viewBinding.isEnabled = true
 
     defaultConfig {
