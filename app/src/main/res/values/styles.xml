@@ -6,4 +6,9 @@
         <item name="android:colorControlHighlight">@android:color/transparent</item>
     </style>
 
+    <style name="BottomNavTextAppearance" parent="TextAppearance.AppCompat.Caption">
+        <item name="android:textSize">11sp</item> <!-- 텍스트 크기 설정 -->
+        <item name="android:padding">0dp</item>  <!-- 패딩 조정 -->
+    </style>
+
 </resources>
