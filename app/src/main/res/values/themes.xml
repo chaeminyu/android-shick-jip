@@ -9,8 +9,13 @@
         <item name="android:editTextStyle">@style/customEditTextFontStyle</item>
         <item name="android:radioButtonStyle">@style/customRadioButtonFontStyle</item>
         <item name="android:checkboxStyle">@style/customCheckboxFontStyle</item>
+        <item name="textAppearanceButton">@style/customButtonFontStyle</item>
+        <item name="android:ambientShadowAlpha">0.02</item>
+        <item name="android:spotShadowAlpha">0.03</item>
+      
     <!--fixme: toolbarstyle
         <item name="android:toolbarStyle">@style/customToolbarFontStyle</item>-->
+      
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
