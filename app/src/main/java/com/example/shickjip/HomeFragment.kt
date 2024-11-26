@@ -1,55 +1,64 @@
 package com.example.shickjip
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
+import androidx.fragment.app.Fragment
+import androidx.viewpager2.widget.ViewPager2
+import com.example.shickjip.databinding.FragmentHomeBinding
 
-/**
- * A simple [Fragment] subclass.
- * Use the [HomeFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class HomeFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
+    private var _binding: FragmentHomeBinding? = null
+    private val binding get() = _binding!!
+
+    private lateinit var handler: Handler
+    private lateinit var bannerAdapter: BannerAdapter
+
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // 배너 데이터 설정
+        val banners = listOf(
+            Banner(R.drawable.banner_flower, "Editor's pick! 오늘의 식물", "성년의 날을 기념하며 전해지는 장미는 단순한 꽃을 넘어 새로운 시작을 응원하는 특별한 의미를 지니고 있습니다. 오늘, 성년의 날을 맞아 스스로의 성장을 축하하며 장미의 향기와 함께 새로운 여정을 시작해보세요!"),
+            Banner(R.drawable.banner_flower, "Editor's pick! 오늘의 식물", "성년의 날을 기념하며 전해지는 장미는 단순한 꽃을 넘어 새로운 시작을 응원하는 특별한 의미를 지니고 있습니다. 오늘, 성년의 날을 맞아 스스로의 성장을 축하하며 장미의 향기와 함께 새로운 여정을 시작해보세요!"),
+            Banner(R.drawable.banner_flower, "Editor's pick! 오늘의 식물", "성년의 날을 기념하며 전해지는 장미는 단순한 꽃을 넘어 새로운 시작을 응원하는 특별한 의미를 지니고 있습니다. 오늘, 성년의 날을 맞아 스스로의 성장을 축하하며 장미의 향기와 함께 새로운 여정을 시작해보세요!")
+        )
+
+        // 배너 어댑터 설정
+        bannerAdapter = BannerAdapter(banners)
+        binding.viewpager.adapter = bannerAdapter
+
+        // 자동 슬라이드 시작
+        handler = Handler(Looper.getMainLooper())
+        startAutoSlide(banners.size)
+    }
+
+    private fun startAutoSlide(itemCount: Int) {
+        val runnable = object : Runnable {
+            override fun run() {
+                val nextItem = (binding.viewpager.currentItem + 1) % itemCount
+                binding.viewpager.setCurrentItem(nextItem, true)
+                handler.postDelayed(this, 3000) // 3초 간격으로 슬라이드
+            }
         }
+        handler.postDelayed(runnable, 3000)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_home, container, false)
-    }
-
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment HomeFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic fun newInstance(param1: String, param2: String) =
-                HomeFragment().apply {
-                    arguments = Bundle().apply {
-                        putString(ARG_PARAM1, param1)
-                        putString(ARG_PARAM2, param2)
-                    }
-                }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        handler.removeCallbacksAndMessages(null) // 자동 슬라이드 중지
+        _binding = null
     }
 }

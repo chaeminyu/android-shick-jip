@@ -1,6 +1,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/menu_book"
+        android:id="@+id/menu_archive"
         android:icon="@drawable/ic_book"
         android:title="나의 도감" />
     <item
@@ -8,7 +8,7 @@
         android:title=""
         />
     <item
-        android:id="@+id/menu_profile"
+        android:id="@+id/menu_mypage"
         android:icon="@drawable/ic_user"
         android:title="마이페이지" />
 </menu>
