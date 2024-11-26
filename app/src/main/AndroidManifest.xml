@@ -18,12 +18,24 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ShickJip"
         tools:targetApi="31">
+      
         <activity
-            android:name=".HomeActivity"
+            android:name=".HomeActivity" />
+      
+        <activity
+            android:name=".LoginActivity"
+            android:parentActivityName=".MainActivity"
             android:exported="false" />
+      
+        <activity
+            android:name=".JoinActivity"
+            android:parentActivityName=".MainActivity"
+            android:exported="false" />
+      
         <activity
             android:name=".CameraActivity"
             android:exported="false" />
+      
         <activity
             android:name=".MainActivity"
             android:exported="true">

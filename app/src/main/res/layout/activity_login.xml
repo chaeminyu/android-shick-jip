@@ -1,9 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:background="@color/green1">
+    android:background="@color/green1"
+    tools:context=".LoginActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/transparent"
+        app:title="뒤로"
+        app:navigationIcon="@drawable/ic_baseline_arrow_back"
+        app:layout_constraintTop_toTopOf="parent" >
+    </androidx.appcompat.widget.Toolbar>
 
     <ImageView
         android:id="@+id/login_logo"
@@ -22,7 +35,6 @@
         android:textSize="70dp"
         android:textStyle="bold"
         android:textColor="@color/green7"
-        android:fontFamily="@font/gangwonedusaeeum"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="30dp"
@@ -72,7 +84,5 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/loginbtn"
         android:layout_marginTop="50dp" />
-
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>
