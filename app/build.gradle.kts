@@ -63,4 +63,10 @@ dependencies {
     // Retrofit
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
+
+    // circular progressbar
+    implementation("com.google.android.material:material:1.4.0")
+
+    // indicator
+    implementation("me.relex:circleindicator:2.1.6")
 }
