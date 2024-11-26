@@ -22,4 +22,8 @@
         <item name="android:fontFamily">@font/gangwonedusaeeum</item>
     </style>
 
+    <style name="customToolbarFontStyle" parent="ThemeOverlay.AppCompat.Light">
+        <item name="android:fontFamily">@font/gangwonedusaeeum</item>
+    </style>
+
 </resources>
