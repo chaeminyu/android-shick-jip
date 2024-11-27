@@ -1,5 +1,6 @@
 package com.example.shickjip
 
+import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -9,6 +10,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.FragmentHomeBinding
+import me.relex.circleindicator.CircleIndicator3
 
 class HomeFragment : Fragment() {
 
@@ -38,22 +40,32 @@ class HomeFragment : Fragment() {
 
         // 배너 어댑터 설정
         bannerAdapter = BannerAdapter(banners)
-        binding.viewpager.adapter = bannerAdapter
+        binding.viewPager.adapter = bannerAdapter
+
+        // 인디케이터 설정
+        val indicator: CircleIndicator3 = binding.indicator
+        indicator.setViewPager(binding.viewPager)
 
         // 자동 슬라이드 시작
         handler = Handler(Looper.getMainLooper())
         startAutoSlide(banners.size)
+
+        // 버튼 클릭 시 CameraActivity로 이동
+        binding.buttonWithIcon.setOnClickListener {
+            val intent = Intent(requireContext(), CameraActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     private fun startAutoSlide(itemCount: Int) {
         val runnable = object : Runnable {
             override fun run() {
-                val nextItem = (binding.viewpager.currentItem + 1) % itemCount
-                binding.viewpager.setCurrentItem(nextItem, true)
-                handler.postDelayed(this, 3000) // 3초 간격으로 슬라이드
+                val nextItem = (binding.viewPager.currentItem + 1) % itemCount
+                binding.viewPager.setCurrentItem(nextItem, true)
+                handler.postDelayed(this, 4000) // 3초 간격으로 슬라이드
             }
         }
-        handler.postDelayed(runnable, 3000)
+        handler.postDelayed(runnable, 4000)
     }
 
     override fun onDestroyView() {
