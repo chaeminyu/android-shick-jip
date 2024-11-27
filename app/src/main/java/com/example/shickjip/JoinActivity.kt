@@ -22,6 +22,13 @@ class JoinActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         //memo: 뒤로가기 버튼의 라벨 설정
 //        supportActionBar?.title = "뒤로가기"
+
+        // 회원가입 버튼 클릭 시 로그인 화면으로 넘어감
+        binding.joinbtn.setOnClickListener {
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+            Log.d("JoinActivity", "go to LoginActivity")
+        }
     }
     /* todo: join 형식 check */
     /*

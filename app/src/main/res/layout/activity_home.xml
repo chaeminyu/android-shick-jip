@@ -6,14 +6,16 @@
     android:layout_height="match_parent">
 
     <!-- Fragment가 표시될 부분 -->
-    <FrameLayout
+    <androidx.fragment.app.FragmentContainerView
         android:id="@+id/fragment_container"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/bottom_navigation_view"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/bottom_navigation_view" >
-
-    </FrameLayout>
+        app:layout_constraintVertical_bias="0.0" />
 
     <!-- BottomNavigationView -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
@@ -24,6 +26,7 @@
         android:paddingHorizontal="35dp"
         android:paddingVertical="6dp"
         style="@style/BottomNavigationViewNoRipple"
+        app:itemBackground="@drawable/ripple_home_button"
         app:menu="@menu/home_bottom_menu"
         app:itemIconSize="28.8dp"
         app:itemIconTint="@color/bottom_nav_item_color"
@@ -41,6 +44,9 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:src="@drawable/ic_homebtn"
+            android:background="@drawable/ripple_home_button"
+            android:clickable="true"
+            android:focusable="true"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"/>
     </com.google.android.material.bottomnavigation.BottomNavigationView>
