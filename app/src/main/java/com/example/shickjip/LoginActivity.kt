@@ -17,6 +17,14 @@ class LoginActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         //memo: 뒤로가기 버튼의 라벨 설정
 //        supportActionBar?.title = "뒤로가기"
+
+
+        // Login 버튼 클릭 시 홈으로 이동
+        binding.loginbtn.setOnClickListener {
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+        }
+
     }
 
 }
