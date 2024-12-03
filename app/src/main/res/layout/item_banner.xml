@@ -3,16 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_margin="16dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="4dp"
+    android:layout_margin="14dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="6dp"
     android:background="@android:color/white">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:padding="12dp"
         android:gravity="center_vertical">
 
         <TextView
@@ -21,6 +21,8 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/pretendard_semibold"
             android:text="Editor's pick! 오늘의 식물"
+            android:layout_marginBottom="2dp"
+            android:layout_marginStart="5dp"
             android:textColor="#26293F"
             android:textSize="14sp"
             android:textStyle="bold" />
@@ -28,23 +30,32 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
             <!-- 이미지 -->
             <ImageView
                 android:id="@+id/banner_image"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_gravity="center_vertical"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1.4"
+                android:padding="10dp"
+                android:adjustViewBounds="true"
+                android:scaleType="centerCrop"
                 android:src="@drawable/banner_flower" />
 
+            <!-- 공백 -->
+            <View
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="0.2" />
+
+            <!-- 텍스트 -->
             <TextView
                 android:id="@+id/banner_description"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_weight="8.4"
                 android:fontFamily="@font/pretendard_regular"
                 android:text="성년의 날을 기념하며 전해지는 장미는 단순한 꽃을 넘어 새로운 시작을 응원하는 특별한 의미를 지니고 있습니다. 오늘, 성년의 날을 맞아 스스로의 성장을 축하하며 장미의 향기와 함께 새로운 여정을 시작해보세요!"
                 android:textColor="#26293F"
