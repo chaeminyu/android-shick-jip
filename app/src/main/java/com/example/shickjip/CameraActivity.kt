@@ -14,6 +14,11 @@ class CameraActivity : AppCompatActivity() {
         binding = ActivityCameraBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 뒤로가기 버튼 클릭 리스너
+        binding.backButton.setOnClickListener {
+            finish() // 현재 Activity 종료
+        }
+
         binding.captureButton.setOnClickListener {
             animateCaptureButton()
 
