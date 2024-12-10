@@ -43,6 +43,8 @@ androidx-camera-view = { group = "androidx.camera", name = "camera-view", versio
 retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
 
+okhttp-core = { group = "com.squareup.okhttp3", name = "okhttp", version = "4.9.0" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
