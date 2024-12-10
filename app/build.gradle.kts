@@ -7,6 +7,10 @@ android {
     namespace = "com.example.shickjip"
     compileSdk = 35
     viewBinding.isEnabled = true
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
+    }
 
     defaultConfig {
         applicationId = "com.example.shickjip"
@@ -16,6 +20,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // API Key 설정
+        val key = project.property("PLANT_API_KEY").toString()
+        buildConfigField("String", "PLANT_API_KEY", "\"$key\"")
     }
 
     buildTypes {
@@ -33,9 +41,6 @@ android {
     }
     kotlinOptions {
         jvmTarget = "1.8"
-    }
-    buildFeatures {
-        viewBinding = true
     }
 }
 
@@ -64,9 +69,8 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.converter.gson)
 
-    // circular progressbar
-    implementation("com.google.android.material:material:1.4.0")
+    // OkHttp
+    implementation(libs.okhttp.core)
 
-    // indicator
     implementation("me.relex:circleindicator:2.1.6")
 }
