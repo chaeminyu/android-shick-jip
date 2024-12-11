@@ -23,9 +23,13 @@ data class PlantSuggestion(
     val id: String,
     val name: String,
     val probability: Double,
-    val similar_images: List<String>?,
+    val similar_images: List<SimilarImage>?,
     val details: PlantDetails?
 )
+data class SimilarImage(
+    val id: String,
+    val url: String,
+    )
 
 data class PlantDetails(
     val common_names: List<String>?,

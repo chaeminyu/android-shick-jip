@@ -132,13 +132,24 @@ class CameraActivity : AppCompatActivity() {
                     val suggestion = plantResponse.result.classification.suggestions.firstOrNull()
 
                     if (suggestion != null) {
-                        // 성공 모달 표시 후 식물 정보 모달 표시
                         showScanDialog(ModalState.SUCCESS) {
-                            val description = suggestion.details?.description?.value
+                            // Get plant details from the suggestion
+                            val details = suggestion.details
+
+                            // Create display name combining common names and scientific name
+                            val commonNames = details?.common_names?.joinToString(", ") ?: ""
+                            val displayName = if (commonNames.isNotEmpty()) {
+                                "$commonNames (${suggestion.name})"
+                            } else {
+                                suggestion.name
+                            }
+
+                            // Get description from the details
+                            val description = details?.description?.value
                                 ?: "이 식물에 대한 설명을 찾을 수 없습니다."
 
                             showPlantInfoDialog(
-                                title = suggestion.name,
+                                title = displayName,
                                 description = description
                             )
                         }
@@ -151,6 +162,7 @@ class CameraActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
+                Log.e(TAG, "Plant identification failed", e)
                 showScanDialog(ModalState.FAILURE) {}
             }
         }
