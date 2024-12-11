@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.view.Window
 import com.example.shickjip.databinding.ItemInfomodalBinding
 
@@ -26,6 +27,10 @@ class PlantInfoDialog(
 
         // 다이얼로그 스타일 설정
         window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window?.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
 
         // 텍스트 설정
         binding.plantTitle.text = title
