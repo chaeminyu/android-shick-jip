@@ -15,8 +15,8 @@ class LoginActivity : AppCompatActivity() {
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        //memo: 뒤로가기 버튼의 라벨 설정
-//        supportActionBar?.title = "뒤로가기"
+        //memo: 뒤로가기 버튼의 라벨 설정 : 따옴표안에넣으면댐
+        supportActionBar?.title = ""
 
 
         // Login 버튼 클릭 시 홈으로 이동
