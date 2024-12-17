@@ -5,6 +5,8 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
@@ -35,6 +37,31 @@ class CameraActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityCameraBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+
+        val containerLayout = findViewById<LinearLayout>(R.id.containerLayout)
+        val flashButton = findViewById<ImageButton>(R.id.flashButton)
+        val captureButton = findViewById<ImageButton>(R.id.captureButton)
+        val switchButton = findViewById<ImageButton>(R.id.switchCameraButton)
+
+        containerLayout.viewTreeObserver.addOnGlobalLayoutListener {
+            val containerHeight = containerLayout.height  // 부모 레이아웃 높이
+            val buttonSize = containerHeight * 5 / 2       // 버튼 크기를 부모 높이의 1/2로 설정
+
+            // 버튼 크기 설정
+            flashButton.layoutParams.height = containerHeight * 2 /5
+            flashButton.layoutParams.width = containerHeight * 2 /5
+            flashButton.requestLayout()
+
+            captureButton.layoutParams.height = containerHeight * 4 / 5
+            captureButton.layoutParams.width = containerHeight * 4 / 5
+            captureButton.requestLayout()
+
+            switchButton.layoutParams.height = containerHeight * 2 /5
+            switchButton.layoutParams.width = containerHeight * 2 /5
+            switchButton.requestLayout()
+        }
+
 
         // 카메라 권한 체크 및 요청
         if (allPermissionsGranted()) {
