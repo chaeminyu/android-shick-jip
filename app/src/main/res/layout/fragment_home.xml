@@ -41,27 +41,32 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/level"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_marginBottom="28dp"
-        app:layout_constraintBottom_toTopOf="@+id/home_tree">
+        app:layout_constraintHeight_percent="0.18"
+        app:layout_constraintWidth_percent="0.32"
+        app:layout_constraintBottom_toTopOf="@+id/home_tree"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <!-- Circular ProgressBar -->
         <com.google.android.material.progressindicator.CircularProgressIndicator
             android:id="@+id/progress_bar"
-            android:layout_width="180dp"
-            android:layout_height="180dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:max="100"
             android:progress="78"
-            app:indicatorColor="@color/green6"
             app:indicatorSize="140dp"
-            app:layout_constraintBottom_toBottomOf="@+id/level"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
+            app:indicatorColor="@color/green6"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:trackColor="@color/green4"
             app:trackCornerRadius="5dp"
-            app:trackThickness="10dp" />
-
+            app:trackThickness="8dp" />
 
         <!-- Title TextView inside ProgressBar -->
         <TextView
@@ -73,7 +78,7 @@
             android:lineSpacingExtra="-10dp"
             android:text="루키\n78.6%"
             android:textColor="@color/green7"
-            android:textSize="32dp"
+            android:textSize="30dp"
             app:layout_constraintBottom_toBottomOf="@+id/progress_bar"
             app:layout_constraintEnd_toEndOf="@+id/progress_bar"
             app:layout_constraintStart_toStartOf="@+id/progress_bar"
@@ -100,10 +105,10 @@
     <!-- Tooltip Container -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/tooltipContainer"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:elevation="18dp"
-        android:visibility="gone"
+        android:visibility="visible"
         android:background="@color/transparent"
         android:layout_marginTop="-40dp"
         android:layout_marginBottom="20dp"
@@ -125,15 +130,17 @@
         <!-- 말풍선 배경 -->
         <LinearLayout
             android:id="@+id/tooltipBackground"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:background="@drawable/tooltip_background"
             android:orientation="vertical"
             android:elevation="18dp"
+            app:layout_constraintWidth_percent="0.85"
             android:layout_marginHorizontal="15dp"
             android:layout_marginBottom="20dp"
             android:paddingVertical="16dp"
-            android:paddingHorizontal="28dp"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/tooltipPolygon"
@@ -156,35 +163,40 @@
                 android:id="@+id/tooltipBody"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
+                android:layout_marginTop="3dp"
                 android:fontFamily="@font/pretendard_light"
                 android:gravity="center"
                 android:text="더 많은 포인트를 모아 {nextlevel}로 올라갈 수 있어요.\n식물을 찾으러 떠나거나, 일기를 작성하여 등급을 올려보세요!"
                 android:textColor="@android:color/black"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ImageView
         android:id="@+id/home_tree"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:src="@drawable/home_tree"
-        android:layout_marginBottom="146dp"
-        app:layout_constraintBottom_toBottomOf="@+id/home_hill"
+        android:layout_marginBottom="-50dp"
+        app:layout_constraintBottom_toTopOf="@+id/home_hill"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintDimensionRatio="1.6:1" />
+
 
     <ImageView
         android:id="@+id/home_hill"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="centerCrop"
         android:src="@drawable/home_hill"
+        android:translationY="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent" />
-
+        app:layout_constraintDimensionRatio="2.6:1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHeight_default="percent"
+        app:layout_constraintHeight_percent="0.25"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/button_with_icon"
