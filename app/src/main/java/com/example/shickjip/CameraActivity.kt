@@ -187,23 +187,39 @@ class CameraActivity : AppCompatActivity() {
                     val suggestion = plantResponse.result.classification.suggestions.firstOrNull()
 
                     if (suggestion != null) {
-                        showScanDialog(ModalState.SUCCESS) {
-                            val description = suggestion.details?.description?.value
-                                ?: "이 식물에 대한 설명을 찾을 수 없습니다."
+                        // 정확도 체크 (probability는 0-1 사이의 값이므로 100을 곱해서 퍼센트로 변환)
+                        val accuracy = suggestion.probability * 100
 
-                            showPlantInfoDialog(
-                                title = suggestion.name,
-                                description = description
-                            )
+                        if (accuracy > 50.0) {
+                            // 정확도가 50% 초과일 경우 성공 처리
+                            showScanDialog(ModalState.SUCCESS) {
+                                val description = suggestion.details?.description?.value
+                                    ?: "이 식물에 대한 설명을 찾을 수 없습니다."
+
+                                showPlantInfoDialog(
+                                    title = suggestion.name,
+                                    description = description
+                                )
+                            }
+                        } else {
+                            // 정확도가 50% 이하일 경우 실패 처리
+                            showScanDialog(ModalState.FAILURE) {
+                                Toast.makeText(
+                                    this@CameraActivity,
+                                    "정확도가 낮습니다. 다시 촬영해주세요. (정확도: ${String.format("%.1f", accuracy)}%)",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                startCamera() // 카메라 재시작
+                            }
                         }
                     } else {
                         showScanDialog(ModalState.FAILURE) {
-                            startCamera() // 실패 시 카메라 재시작
+                            startCamera()
                         }
                     }
                 } else {
                     showScanDialog(ModalState.FAILURE) {
-                        startCamera() // 실패 시 카메라 재시작
+                        startCamera()
                     }
                 }
                 isProcessing = false
@@ -212,7 +228,7 @@ class CameraActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 isProcessing = false
                 showScanDialog(ModalState.FAILURE) {
-                    startCamera() // 실패 시 카메라 재시작
+                    startCamera()
                 }
             }
         }
