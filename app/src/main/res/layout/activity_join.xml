@@ -9,7 +9,7 @@
     tools:context=".JoinActivity">
 
         <!--fixme: 로고 이미지 추가 할까요?-->
-        <!--
+    <!--
         <ImageView
             android:id="@+id/join_logo"
             android:layout_width="wrap_content"
@@ -18,8 +18,7 @@
             android:src="@drawable/loginlogo"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
-        -->
+            app:layout_constraintEnd_toEndOf="parent" /> -->
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
