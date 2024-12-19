@@ -7,7 +7,7 @@ import com.example.shickjip.databinding.ActivityHomeBinding
 
 class HomeActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityHomeBinding
+    lateinit var binding: ActivityHomeBinding
     private var currentSelectedIndex = 1 // 기본값: HomeFragment 인덱스
 
     override fun onCreate(savedInstanceState: Bundle?) {

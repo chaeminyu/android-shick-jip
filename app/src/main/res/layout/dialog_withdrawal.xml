@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="12dp"
+    android:background="@color/white">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:background="@color/green3">
+
+        <!-- 타이틀 섹션 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="회원 탈퇴"
+            android:textSize="20sp"
+            android:textColor="@color/green9"
+            android:fontFamily="@font/pretendard_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="정말 탈퇴하시겠습니까?\n회원님의 도감 속 식물들이 회원님을 그리워할거에요!"
+            android:textSize="14sp"
+            android:textColor="@color/gray1"
+            android:fontFamily="@font/pretendard_regular"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- 버튼 섹션 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/cancelButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="취소"
+                android:textColor="@color/green9"
+                app:backgroundTint="@color/green5"
+                app:strokeColor="@color/gray1"
+                app:strokeWidth="1dp"
+                app:cornerRadius="8dp"
+                android:fontFamily="@font/pretendard_medium"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/confirmButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="탈퇴하기"
+                android:textColor="@color/green9"
+                app:backgroundTint="@color/green5"
+                app:strokeColor="@color/gray1"
+                app:strokeWidth="1dp"
+                app:cornerRadius="8dp"
+                android:fontFamily="@font/pretendard_medium"/>
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    app:cardCornerRadius="12dp"
+    android:background="@color/green3">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:background="@color/green3">
+
+        <!-- 타이틀 섹션 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="코인 충전하기"
+            android:textSize="20sp"
+            android:textColor="@color/green9"
+            android:fontFamily="@font/pretendard_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="충전할 금액을 선택해주세요"
+            android:textSize="14sp"
+            android:textColor="@color/gray1"
+            android:fontFamily="@font/pretendard_regular"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- 금액 선택 라디오 그룹 -->
+        <RadioGroup
+            android:id="@+id/chargeAmountGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/amount1000"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="1,000 코인 (1,000원)"
+                android:textColor="@color/green9"
+                android:fontFamily="@font/pretendard_medium"
+                android:paddingVertical="12dp"
+                android:button="@drawable/radio_button_selector"/>
+
+            <RadioButton
+                android:id="@+id/amount5000"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="5,000 코인 (5,000원)"
+                android:textColor="@color/green9"
+                android:fontFamily="@font/pretendard_medium"
+                android:paddingVertical="12dp"
+                android:button="@drawable/radio_button_selector"/>
+
+            <RadioButton
+                android:id="@+id/amount10000"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="10,000 코인 (10,000원)"
+                android:textColor="@color/green9"
+                android:fontFamily="@font/pretendard_medium"
+                android:paddingVertical="12dp"
+                android:button="@drawable/radio_button_selector"/>
+        </RadioGroup>
+
+        <!-- 버튼 섹션 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="24dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/cancelButton"
+                style="@style/GrayOutlineButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:text="취소"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/green5"
+                app:strokeColor="@color/gray1"
+                app:strokeWidth="1dp"
+                app:cornerRadius="8dp"
+                android:fontFamily="@font/pretendard_medium"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/chargeButton"
+                style="@style/GrayOutlineButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="충전하기"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/green5"
+                app:cornerRadius="8dp"
+                android:fontFamily="@font/pretendard_medium"/>
+        </LinearLayout>
+    </LinearLayout>
+</androidx.cardview.widget.CardView>
