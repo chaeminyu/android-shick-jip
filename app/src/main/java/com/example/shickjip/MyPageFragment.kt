@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.example.shickjip.databinding.FragmentMypageBinding
@@ -52,14 +53,14 @@ class MyPageFragment : Fragment() {
         }
 
         // 샵으로 버튼
-        binding.shopButton.setOnClickListener {
-            // ShopFragment로 이동하는 코드
-            val shopFragment = ShopFragment()
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, shopFragment)
-                .addToBackStack(null)
-                .commit()
-        }
+//        binding.shopButton.setOnClickListener {
+//            // ShopFragment로 이동하는 코드
+//            val shopFragment = ShopFragment()
+//            parentFragmentManager.beginTransaction()
+//                .replace(R.id.fragmentContainer, shopFragment)
+//                .addToBackStack(null)
+//                .commit()
+//        }
 
         // 회원 수정 버튼
         binding.editProfileButton.setOnClickListener {
@@ -77,18 +78,52 @@ class MyPageFragment : Fragment() {
         val bindingDialog = DialogCoinChargeBinding.inflate(layoutInflater)
         dialog.setContentView(bindingDialog.root)
 
+        // 선택된 금액 저장 변수
+        var selectedAmount = 0
+
+        // 라디오 버튼 클릭 리스너 설정
         bindingDialog.apply {
-            // 코인 충전 금액 선택 로직
-            chargeButton.setOnClickListener {
-                // 코인 충전 처리
-                dialog.dismiss()
-            }
+            amount1000.setOnClickListener { selectedAmount = 1000 }
+            amount5000.setOnClickListener { selectedAmount = 5000 }
+            amount10000.setOnClickListener { selectedAmount = 10000 }
+
+            // 취소 버튼
             cancelButton.setOnClickListener {
                 dialog.dismiss()
+            }
+
+            // 충전 버튼
+            chargeButton.setOnClickListener {
+                if (selectedAmount > 0) {
+                    // TODO: 실제 결제 처리 로직 구현
+                    processCoinCharge(selectedAmount)
+                    dialog.dismiss()
+                } else {
+                    Toast.makeText(requireContext(), "충전할 금액을 선택해주세요", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
         dialog.show()
+    }
+
+    private fun processCoinCharge(amount: Int) {
+        // TODO: 실제 결제 처리 및 DB 업데이트
+        // 임시로 토스트 메시지만 표시
+        Toast.makeText(
+            requireContext(),
+            "${amount}코인이 충전되었습니다",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        // 코인 잔액 UI 업데이트
+        updateCoinBalance(amount)
+    }
+
+    private fun updateCoinBalance(addedAmount: Int) {
+        val currentBalance = binding.coinAmount.text.toString().toIntOrNull() ?: 0
+        val newBalance = currentBalance + addedAmount
+        binding.coinAmount.text = newBalance.toString()
     }
 
     private fun showEditProfileDialog() {
@@ -98,15 +133,34 @@ class MyPageFragment : Fragment() {
 
         bindingDialog.apply {
             confirmButton.setOnClickListener {
-                // 회원 정보 수정 처리
+                val currentPassword = currentPasswordInput.text.toString()
+                val newPassword = newPasswordInput.text.toString()
+                val newNickname = newNicknameInput.text.toString()
+
+                if (currentPassword.isBlank() || newPassword.isBlank() || newNickname.isBlank()) {
+                    Toast.makeText(requireContext(), "모든 필드를 입력해주세요", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                // TODO: 비밀번호 유효성 검사 및 실제 정보 업데이트 로직 구현
+                updateUserProfile(newPassword, newNickname)
                 dialog.dismiss()
             }
+
             cancelButton.setOnClickListener {
                 dialog.dismiss()
             }
         }
 
         dialog.show()
+    }
+
+    private fun updateUserProfile(newPassword: String, newNickname: String) {
+        // TODO: 실제 DB 업데이트 로직 구현
+        Toast.makeText(requireContext(), "회원 정보가 수정되었습니다", Toast.LENGTH_SHORT).show()
+
+        // 닉네임 UI 업데이트
+        binding.welcomeText.text = "${newNickname}님, 환영합니다!"
     }
 
     private fun showWithdrawalDialog() {
@@ -116,18 +170,18 @@ class MyPageFragment : Fragment() {
 
         bindingDialog.apply {
             confirmButton.setOnClickListener {
+                // 한번 더 확인하는 다이얼로그 표시
                 AlertDialog.Builder(requireContext())
                     .setTitle("회원 탈퇴")
-                    .setMessage("정말로 탈퇴하시겠습니까?")
+                    .setMessage("정말로 탈퇴하시겠습니까?\n모든 데이터가 삭제됩니다.")
                     .setPositiveButton("확인") { _, _ ->
-                        // 탈퇴 처리 및 로그인 화면으로 이동
-                        startActivity(Intent(requireContext(), MainActivity::class.java))
-                        requireActivity().finish()
+                        processWithdrawal()
+                        dialog.dismiss()
                     }
                     .setNegativeButton("취소", null)
                     .show()
-                dialog.dismiss()
             }
+
             cancelButton.setOnClickListener {
                 dialog.dismiss()
             }
@@ -136,8 +190,12 @@ class MyPageFragment : Fragment() {
         dialog.show()
     }
 
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+    private fun processWithdrawal() {
+        // TODO: 실제 회원 탈퇴 처리 로직 구현
+        Toast.makeText(requireContext(), "회원 탈퇴가 완료되었습니다", Toast.LENGTH_SHORT).show()
+
+        // MainActivity로 이동
+        startActivity(Intent(requireContext(), MainActivity::class.java))
+        requireActivity().finish()
     }
 }
