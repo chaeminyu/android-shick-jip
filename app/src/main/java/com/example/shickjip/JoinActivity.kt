@@ -53,6 +53,7 @@ class JoinActivity : AppCompatActivity() {
                     // Firestore에 사용자 세부 정보 저장
                     saveUserData(username, email)
                     // 회원가입 성공 메시지 표시
+
                     Toast.makeText(this, "회원가입 성공", Toast.LENGTH_SHORT).show() //Toast는 아래에 메세지를 띄워줍니다.
                     // 메인 액티비티로 이동
                     navigateToMainActivity()
@@ -85,46 +86,3 @@ class JoinActivity : AppCompatActivity() {
         finish()  // 현재 액티비티를 종료하여 뒤로가기 버튼으로 다시 돌아오지 않도록 한다.
     }
 }
-    /* todo: join 형식 check */
-    /*
-    private var passwordFlag = false
-    private var passwordCheckFlag = false
-
-    fun flagCheck() {
-        if (passwordFlag && passwordCheckFlag) {
-            binding.joinbtn.isEnabled = true
-        } else {
-            binding.joinbtn.isEnabled = false
-        }
-    }
-    private val passwordListener = object : TextWatcher {
-        override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-        }
-
-        override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-        }
-
-        override fun afterTextChanged(s: Editable?) {
-            if (s != null) {
-                when {
-                    s.isEmpty() -> {
-                        binding.pwdInputLayout.error = "비밀번호를 입력해주세요."
-                        passwordFlag = false
-                    }
-                    !passwordRegex(s.toString()) -> {
-                        binding.pwdInputLayout.error = "비밀번호 양식이 일치하지 않습니다."
-                        passwordFlag = false
-                    }
-                    else -> {
-                        binding.pwdInputLayout.error = null
-                        passwordFlag = true
-                    }
-                }
-                flagCheck()
-            }
-        }
-    }
-    fun passwordRegex(password: String): Boolean {
-        return password.matches("^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[$@$!%*#?&.])[A-Za-z[0-9]$@$!%*#?&.]{8,16}$".toRegex())
-    }
-     */
