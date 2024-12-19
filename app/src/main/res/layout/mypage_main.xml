@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/white">
@@ -111,9 +112,9 @@
             android:id="@+id/scanButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
             app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            android:layout_marginBottom="8dp">
+            app:cardElevation="0dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -127,7 +128,7 @@
                     android:layout_weight="1"
                     android:background="@color/green4"
                     android:gravity="center"
-                    android:padding="24dp">
+                    android:padding="42dp">
 
                     <ImageView
                         android:layout_width="24dp"
@@ -138,10 +139,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
+                        android:fontFamily="@font/pretendard_medium"
                         android:text="식물 인식하기"
                         android:textColor="@color/green9"
-                        android:textSize="14sp"
-                        android:fontFamily="@font/pretendard_medium" />
+                        android:textSize="14sp" />
                 </LinearLayout>
 
                 <!-- 오른쪽 흰색 부분 -->
@@ -156,10 +157,10 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/pretendard_regular"
                         android:text="새로운 식물을 인식하러 가보아요!"
                         android:textColor="@color/gray1"
-                        android:textSize="12sp"
-                        android:fontFamily="@font/pretendard_regular" />
+                        android:textSize="12sp" />
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
@@ -184,7 +185,7 @@
                     android:layout_weight="1"
                     android:background="@color/green4"
                     android:gravity="center"
-                    android:padding="24dp">
+                    android:padding="42dp">
 
                     <ImageView
                         android:layout_width="24dp"
@@ -195,10 +196,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
+                        android:fontFamily="@font/pretendard_medium"
                         android:text="도감 읽기"
                         android:textColor="@color/green9"
-                        android:textSize="14sp"
-                        android:fontFamily="@font/pretendard_medium" />
+                        android:textSize="14sp" />
                 </LinearLayout>
 
                 <!-- 오른쪽 흰색 부분 -->
@@ -213,32 +214,37 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:fontFamily="@font/pretendard_regular"
                         android:text="도감에 등록된 식물과 안녕해요!"
                         android:textColor="@color/gray1"
-                        android:textSize="12sp"
-                        android:fontFamily="@font/pretendard_regular" />
+                        android:textSize="12sp" />
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
     </LinearLayout>
 
     <!-- Navigation Buttons -->
+
     <LinearLayout
         android:id="@+id/navigationButtons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
         android:orientation="horizontal"
         android:padding="24dp"
-        app:layout_constraintBottom_toTopOf="@+id/accountButtons">
+        app:layout_constraintBottom_toTopOf="@+id/accountButtons"
+        tools:layout_editor_absoluteX="0dp">
 
         <LinearLayout
             android:id="@+id/homeButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginRight="4dp"
             android:layout_weight="1"
+            android:background="@drawable/gray_button_outline"
             android:gravity="center"
-            android:padding="16dp"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <ImageView
                 android:layout_width="24dp"
@@ -249,20 +255,22 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
+                android:fontFamily="@font/pretendard_medium"
                 android:text="홈으로"
                 android:textColor="@color/green5"
-                android:textSize="12sp"
-                android:fontFamily="@font/pretendard_medium" />
+                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout
             android:id="@+id/shopButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="4dp"
             android:layout_weight="1"
+            android:background="@drawable/gray_button_outline"
             android:gravity="center"
-            android:padding="16dp"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:padding="16dp">
 
             <ImageView
                 android:layout_width="24dp"
@@ -273,28 +281,30 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
+                android:fontFamily="@font/pretendard_medium"
                 android:text="샵으로"
                 android:textColor="@color/green5"
-                android:textSize="12sp"
-                android:fontFamily="@font/pretendard_medium" />
+                android:textSize="12sp" />
         </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/accountButtons"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="409dp"
+        android:layout_height="74dp"
+        android:layout_marginBottom="16dp"
         android:orientation="horizontal"
         android:padding="16dp"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:layout_editor_absoluteX="2dp">
 
         <Button
             android:id="@+id/editProfileButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_marginEnd="4dp"
-            android:background="@drawable/button_outline"
+            android:layout_weight="1"
+            android:background="@drawable/gray_button_outline"
             android:fontFamily="@font/pretendard_medium"
             android:text="회원 수정"
             android:textColor="@color/green9" />
@@ -303,12 +313,12 @@
             android:id="@+id/deleteAccountButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/gray_button_outline"
+            android:fontFamily="@font/pretendard_medium"
             android:text="회원 탈퇴"
-            android:textColor="@color/green9"
-            android:background="@drawable/button_outline_red"
-            android:fontFamily="@font/pretendard_medium" />
+            android:textColor="@color/green9" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
