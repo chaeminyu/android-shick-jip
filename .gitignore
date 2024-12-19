@@ -29,6 +29,8 @@ render.experimental.xml
 
 # Google Services (e.g. APIs or Firebase)
 google-services.json
+shickzip-firebase-adminsdk-iddif-2c13e65000.json
 
 # Android Profiling
 *.hprof
+app/shickzip-firebase-adminsdk-iddif-2c13e65000.json

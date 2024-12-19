@@ -28,40 +28,22 @@ import okhttp3.RequestBody
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.Executor
 
 class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraBinding
     private var imageCapture: ImageCapture? = null
+    private lateinit var cameraExecutor: Executor
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var isProcessing = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityCameraBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-
-        val containerLayout = findViewById<LinearLayout>(R.id.containerLayout)
-        val flashButton = findViewById<ImageButton>(R.id.flashButton)
-        val captureButton = findViewById<ImageButton>(R.id.captureButton)
-        val switchButton = findViewById<ImageButton>(R.id.switchCameraButton)
-
-        containerLayout.viewTreeObserver.addOnGlobalLayoutListener {
-            val containerHeight = containerLayout.height  // 부모 레이아웃 높이
-            val buttonSize = containerHeight * 5 / 2       // 버튼 크기를 부모 높이의 1/2로 설정
-
-            // 버튼 크기 설정
-            flashButton.layoutParams.height = containerHeight * 2 /5
-            flashButton.layoutParams.width = containerHeight * 2 /5
-            flashButton.requestLayout()
-
-            captureButton.layoutParams.height = containerHeight * 4 / 5
-            captureButton.layoutParams.width = containerHeight * 4 / 5
-            captureButton.requestLayout()
-
-            switchButton.layoutParams.height = containerHeight * 2 /5
-            switchButton.layoutParams.width = containerHeight * 2 /5
-            switchButton.requestLayout()
-        }
-
+        cameraExecutor = ContextCompat.getMainExecutor(this)
 
         // 카메라 권한 체크 및 요청
         if (allPermissionsGranted()) {
@@ -78,11 +60,12 @@ class CameraActivity : AppCompatActivity() {
         }
 
         binding.captureButton.setOnClickListener {
-            animateCaptureButton()
-            takePhoto()
+            if (!isProcessing) {
+                animateCaptureButton()
+                takePhoto()
+            }
         }
     }
-
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
             baseContext, it) == PackageManager.PERMISSION_GRANTED
@@ -111,10 +94,53 @@ class CameraActivity : AppCompatActivity() {
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+            bindCameraUseCases()
+        }, cameraExecutor)
+    }
+
+    private fun bindCameraUseCases() {
+        val cameraProvider = cameraProvider ?: return
+
+        val preview = Preview.Builder()
+            .build()
+            .also {
+                it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+            }
+
+        imageCapture = ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+            .build()
+
+        try {
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                this,
+                CameraSelector.DEFAULT_BACK_CAMERA,
+                preview,
+                imageCapture
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Camera binding failed", e)
+        }
+    }
+
+    private fun stopCamera() {
+        cameraProvider?.unbindAll()
+    }
+
     private fun takePhoto() {
         val imageCapture = imageCapture ?: return
+        isProcessing = true
 
-        // 로딩 중 모달 표시
+        // 카메라 미리보기 중지
+        stopCamera()
+
+        // 로딩 모달 표시
         showScanDialog(ModalState.LOADING) {
             val photoFile = File(
                 getOutputDirectory(),
@@ -125,7 +151,7 @@ class CameraActivity : AppCompatActivity() {
 
             imageCapture.takePicture(
                 outputOptions,
-                ContextCompat.getMainExecutor(this),
+                cameraExecutor,
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                         lifecycleScope.launch {
@@ -134,7 +160,11 @@ class CameraActivity : AppCompatActivity() {
                     }
 
                     override fun onError(exc: ImageCaptureException) {
-                        showScanDialog(ModalState.FAILURE) {}
+                        isProcessing = false
+                        showScanDialog(ModalState.FAILURE) {
+                            // 실패 시 카메라 재시작
+                            startCamera()
+                        }
                     }
                 }
             )
@@ -143,11 +173,9 @@ class CameraActivity : AppCompatActivity() {
 
     private suspend fun identifyPlantWithApi(photoFile: File) {
         try {
-            // MultipartBody.Part 생성
             val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), photoFile)
             val imagePart = MultipartBody.Part.createFormData("images", photoFile.name, requestFile)
 
-            // API 호출
             val response = RetrofitClient.plantApiService.identifyPlant(
                 apiKey = BuildConfig.PLANT_API_KEY,
                 image = imagePart
@@ -160,70 +188,34 @@ class CameraActivity : AppCompatActivity() {
 
                     if (suggestion != null) {
                         showScanDialog(ModalState.SUCCESS) {
-                            // Get plant details from the suggestion
-                            val details = suggestion.details
-
-                            // Create display name combining common names and scientific name
-                            val commonNames = details?.common_names?.joinToString(", ") ?: ""
-                            val displayName = if (commonNames.isNotEmpty()) {
-                                "$commonNames (${suggestion.name})"
-                            } else {
-                                suggestion.name
-                            }
-
-                            // Get description from the details
-                            val description = details?.description?.value
+                            val description = suggestion.details?.description?.value
                                 ?: "이 식물에 대한 설명을 찾을 수 없습니다."
 
                             showPlantInfoDialog(
-                                title = displayName,
+                                title = suggestion.name,
                                 description = description
                             )
                         }
                     } else {
-                        showScanDialog(ModalState.FAILURE) {}
+                        showScanDialog(ModalState.FAILURE) {
+                            startCamera() // 실패 시 카메라 재시작
+                        }
                     }
                 } else {
-                    showScanDialog(ModalState.FAILURE) {}
+                    showScanDialog(ModalState.FAILURE) {
+                        startCamera() // 실패 시 카메라 재시작
+                    }
                 }
+                isProcessing = false
             }
         } catch (e: Exception) {
             withContext(Dispatchers.Main) {
-                Log.e(TAG, "Plant identification failed", e)
-                showScanDialog(ModalState.FAILURE) {}
+                isProcessing = false
+                showScanDialog(ModalState.FAILURE) {
+                    startCamera() // 실패 시 카메라 재시작
+                }
             }
         }
-    }
-
-    // 카메라 권한 체크 및 카메라 시작
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
-
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
-                }
-
-            imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
-                .build()
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
-                    preview,
-                    imageCapture
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Camera binding failed", e)
-            }
-        }, ContextCompat.getMainExecutor(this))
     }
 
     private fun getOutputDirectory(): File {
@@ -233,6 +225,7 @@ class CameraActivity : AppCompatActivity() {
         return if (mediaDir != null && mediaDir.exists())
             mediaDir else filesDir
     }
+
 
     private fun showScanDialog(state: ModalState, onDismiss: (() -> Unit)?) {
         val dialog = ScanDialog(state, onDismiss)
