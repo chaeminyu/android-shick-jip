@@ -25,15 +25,18 @@ class LoginActivity : AppCompatActivity() {
 
         // Login 버튼 클릭 시 로그인하기
         binding.loginbtn.setOnClickListener {
-            loginUser()
+            val email = binding.email.text.toString()
+            val password = binding.pwd.text.toString()
+            if (password.length < 6) {
+                Toast.makeText(this, "비밀번호는 최소 6자 이상이어야 합니다", Toast.LENGTH_SHORT).show()
+            } else {
+                loginUser(email, password)
+            }
 
         }
 
     }
-    private fun loginUser() { //xml에서 id를 가져온다
-        val email = binding.email.text.toString()
-        val password = binding.pwd.text.toString()
-
+    private fun loginUser(email: String, password: String) { //xml에서 id를 가져온다.
         auth.signInWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
@@ -43,6 +46,7 @@ class LoginActivity : AppCompatActivity() {
                     // Add your logic to navigate to another activity or perform other actions
                     val intent = Intent(this, HomeActivity::class.java)
                     startActivity(intent)
+                    finish()//로그인 성공시 뒤로가기 금지
                 } else {
                     // 로그인 실패 시
                     Toast.makeText(this, "로그인 실패: ${task.exception?.message}", Toast.LENGTH_SHORT).show()

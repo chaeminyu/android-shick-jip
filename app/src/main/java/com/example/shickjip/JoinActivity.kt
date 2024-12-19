@@ -53,7 +53,6 @@ class JoinActivity : AppCompatActivity() {
                     // Firestore에 사용자 세부 정보 저장
                     saveUserData(username, email)
                     // 회원가입 성공 메시지 표시
-
                     Toast.makeText(this, "회원가입 성공", Toast.LENGTH_SHORT).show() //Toast는 아래에 메세지를 띄워줍니다.
                     // 메인 액티비티로 이동
                     navigateToMainActivity()
