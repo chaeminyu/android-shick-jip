@@ -32,6 +32,8 @@ import java.util.Locale
 class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraBinding
     private var imageCapture: ImageCapture? = null
+    private var lensFacing = CameraSelector.LENS_FACING_BACK
+    private var flashMode = ImageCapture.FLASH_MODE_OFF
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +83,37 @@ class CameraActivity : AppCompatActivity() {
             animateCaptureButton()
             takePhoto()
         }
+        // 플래시 버튼 클릭 리스너
+        binding.flashButton.setOnClickListener {
+            toggleFlash()
+        }
+
+        // 카메라 전환 버튼 클릭 리스너
+        binding.switchCameraButton.setOnClickListener {
+            toggleCamera()
+        }
+    }
+    private fun toggleFlash() {
+        flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
+            binding.flashButton.setImageResource(R.drawable.ic_flash_on)
+            ImageCapture.FLASH_MODE_ON
+        } else {
+            binding.flashButton.setImageResource(R.drawable.ic_flash_off)
+            ImageCapture.FLASH_MODE_OFF
+        }
+
+        // 캡쳐 설정 업데이트
+        imageCapture?.flashMode = flashMode
+    }
+
+    private fun toggleCamera() {
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+            CameraSelector.LENS_FACING_FRONT
+        } else {
+            CameraSelector.LENS_FACING_BACK
+        }
+        // 카메라 재시작
+        startCamera()
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
