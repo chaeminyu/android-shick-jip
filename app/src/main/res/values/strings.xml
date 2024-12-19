@@ -7,6 +7,6 @@
     <string name="nickname">{nickname}</string>
     <string name="official_name">{Official Name}</string>
     <string name="registration_date">{registration date}</string>
-<!-- TODO: Remove or change this placeholder text -->
+    <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
