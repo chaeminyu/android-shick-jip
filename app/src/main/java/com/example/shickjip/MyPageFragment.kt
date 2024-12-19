@@ -28,7 +28,19 @@ class MyPageFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // 레벨에 따른 프로그레스바 업데이트
+        updateLevelProgress()
         setupClickListeners()
+    }
+
+    private fun updateLevelProgress() {
+        // 예시: 현재 경험치가 1980이고 다음 레벨까지 2000이 필요한 경우
+        val currentExp = 1980
+        val maxExp = 2000
+        val progress = (currentExp.toFloat() / maxExp * 100).toInt()
+
+        binding.levelProgressBar.max = 100
+        binding.levelProgressBar.progress = progress
     }
 
     private fun setupClickListeners() {
