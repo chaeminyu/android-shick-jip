@@ -1,6 +1,7 @@
 package com.example.shickjip
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.ActivityHomeBinding
@@ -30,9 +31,15 @@ class HomeActivity : AppCompatActivity() {
             }
 
             if (selectedIndex != currentSelectedIndex) {
+                // ViewPager2를 다시 보이도록 설정
+                binding.viewPager.visibility = View.VISIBLE
+
                 binding.viewPager.setCurrentItem(selectedIndex, true)
                 currentSelectedIndex = selectedIndex
             }
+
+            // FragmentContainerView 안의 프래그먼트를 제거 (PlantDetailFragment 제거)
+            supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
             true
         }
 
@@ -41,8 +48,12 @@ class HomeActivity : AppCompatActivity() {
             override fun onPageSelected(position: Int) {
                 currentSelectedIndex = position
                 binding.bottomNavigationView.menu.getItem(position).isChecked = true
+
+                // ViewPager2가 전환되면 FragmentContainerView를 초기화
+                supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }
         })
+
 
         // 홈 버튼 클릭 리스너
         binding.homeButtonIcon.setOnClickListener {

@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.FragmentArchiveBinding
 import com.example.shickjip.models.Plant
 import com.google.firebase.auth.FirebaseAuth
@@ -55,7 +56,12 @@ class ArchiveFragment : Fragment() {
 
     private fun setupRecyclerView() {
         archiveAdapter = ArchiveAdapter(plantsList) { plantId ->
-            parentFragmentManager.beginTransaction()
+            Log.d("ArchiveFragment", "Navigating to PlantDetailFragment with plantId: $plantId")
+
+            // ViewPager 숨기기
+            requireActivity().findViewById<ViewPager2>(R.id.viewPager).visibility = View.GONE
+
+            requireActivity().supportFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainer, PlantDetailFragment.newInstance(plantId))
                 .addToBackStack(null)
                 .commit()
@@ -65,6 +71,10 @@ class ArchiveFragment : Fragment() {
             adapter = archiveAdapter
         }
     }
+
+
+
+
 
     //chatgpt 추천코드
     private fun isNetworkAvailable(): Boolean {

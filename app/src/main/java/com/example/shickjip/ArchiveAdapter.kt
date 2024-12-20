@@ -30,7 +30,10 @@ class ArchiveAdapter(
 
     override fun onBindViewHolder(holder: ArchiveViewHolder, position: Int) {
         val plant = plants[position]
-        holder.itemView.setOnClickListener { onItemClick(plant.id) }
+        holder.itemView.setOnClickListener {
+            Log.d("ArchiveAdapter", "Item clicked: ${plant.id}")
+            onItemClick(plant.id)
+        }
 
         holder.binding.apply {
             officialName.text = plant.name
@@ -44,8 +47,6 @@ class ArchiveAdapter(
                 .error(R.drawable.error_image) // 오류 시 표시할 이미지 추가
                 .into(archiveImage)
             Log.d("ArchiveAdapter", "Loading image: ${plant.imagePath}")
-
-
 
         }
 
