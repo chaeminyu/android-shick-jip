@@ -8,7 +8,8 @@ class HomeBNVAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity
     private val fragments = listOf(
         ArchiveFragment(),
         HomeFragment(),
-        MyPageFragment()
+        MyPageFragment(),
+        ShopFragment()
     )
 
     override fun getItemCount(): Int = fragments.size
