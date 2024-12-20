@@ -193,27 +193,8 @@ class CameraActivity : AppCompatActivity() {
             description = description,
             imageUri = Uri.fromFile(photoFile),
             imagePath = photoFile.absolutePath,
-            onButtonClick = {
-                val plant = Plant(
-                    id = UUID.randomUUID().toString(),
-                    userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
-                    name = title,
-                    description = description,
-                    imagePath = photoFile.absolutePath,
-                    captureDate = System.currentTimeMillis()
-                )
-
-                FirebaseFirestore.getInstance()
-                    .collection("plants")
-                    .document(plant.id)
-                    .set(plant)
-                    .addOnSuccessListener {
-                        Toast.makeText(this, "도감에 저장되었습니다", Toast.LENGTH_SHORT).show()
-                        finish()
-                    }
-                    .addOnFailureListener { e ->
-                        Toast.makeText(this, "저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
+            onSuccess = { // 성공 시에만 실행되는 콜백
+                finish()
             }
         )
         plantInfoDialog.show()

@@ -2,6 +2,7 @@ package com.example.shickjip
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,10 +14,23 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.example.shickjip.databinding.DialogCoinChargeBinding
 import com.example.shickjip.databinding.DialogEditProfileBinding
 import com.example.shickjip.databinding.DialogWithdrawalBinding
+import com.example.shickjip.models.UserProfile
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class MyPageFragment : Fragment() {
     private var _binding: FragmentMypageBinding? = null
     private val binding get() = _binding!!
+
+    private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+    private var currentUser: UserProfile? = null
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        loadUserProfile()
+        setupClickListeners()
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -25,12 +39,120 @@ class MyPageFragment : Fragment() {
         _binding = FragmentMypageBinding.inflate(inflater, container, false)
         return binding.root
     }
+    private fun loadUserProfile() {
+        auth.currentUser?.let { user ->
+            // users 컬렉션에서 현재 로그인한 사용자의 uid로 직접 문서를 조회
+            firestore.collection("users")
+                .document(user.uid) // email 대신 uid 사용
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        Log.e("MyPageFragment", "Error fetching user data", e)
+                        Toast.makeText(context, "사용자 정보를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                        return@addSnapshotListener
+                    }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        // 레벨에 따른 프로그레스바 업데이트
-        updateLevelProgress()
-        setupClickListeners()
+                    if (snapshot != null && snapshot.exists()) {
+                        val userProfile = snapshot.toObject(UserProfile::class.java)
+                        currentUser = userProfile
+                        updateUI(userProfile)
+                    }
+                }
+        }
+    }
+    // UI 업데이트 함수 수정
+    private fun updateUI(userProfile: UserProfile?) {
+        userProfile?.let { profile ->
+            binding.apply {
+                welcomeText.text = "${profile.username}님, 환영합니다!"
+                coinAmount.text = profile.coins.toString()
+
+                // 레벨 프로그레스바 업데이트
+                val nextLevelExp = calculateNextLevelExp(profile.level)
+                val progress = (profile.experience.toFloat() / nextLevelExp * 100).toInt()
+                levelProgressBar.progress = progress
+            }
+        }
+    }
+    private fun calculateNextLevelExp(currentLevel: Int): Int {
+        // 레벨별 필요 경험치 계산 로직
+        return when (currentLevel) {
+            1 -> 500
+            2 -> 1000
+            3 -> 1500
+            4 -> 2000
+            else -> 2500
+        }
+    }
+    private fun processCoinCharge(amount: Int) {
+        auth.currentUser?.let { user ->
+            firestore.collection("users")
+                .whereEqualTo("email", user.email)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (!documents.isEmpty) {
+                        val userDoc = documents.documents[0]
+                        val currentCoins = userDoc.getLong("coins") ?: 0
+
+                        userDoc.reference.update("coins", currentCoins + amount)
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "${amount}코인이 충전되었습니다", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(context, "코인 충전에 실패했습니다", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                }
+        }
+    }
+
+    private fun updateUserProfile(newPassword: String, newNickname: String) {
+        auth.currentUser?.let { user ->
+            // 비밀번호 업데이트
+            user.updatePassword(newPassword)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        // Firestore 사용자 정보 업데이트
+                        firestore.collection("users")
+                            .whereEqualTo("email", user.email)
+                            .get()
+                            .addOnSuccessListener { documents ->
+                                if (!documents.isEmpty) {
+                                    documents.documents[0].reference
+                                        .update("username", newNickname)
+                                        .addOnSuccessListener {
+                                            Toast.makeText(context, "회원 정보가 수정되었습니다", Toast.LENGTH_SHORT).show()
+                                        }
+                                }
+                            }
+                    } else {
+                        Toast.makeText(context, "비밀번호 변경에 실패했습니다", Toast.LENGTH_SHORT).show()
+                    }
+                }
+        }
+    }
+    private fun processWithdrawal() {
+        auth.currentUser?.let { user ->
+            // Firestore 데이터 삭제
+            firestore.collection("users")
+                .whereEqualTo("email", user.email)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (!documents.isEmpty) {
+                        documents.documents[0].reference.delete()
+                    }
+                }
+                .addOnCompleteListener {
+                    // Firebase Auth 계정 삭제
+                    user.delete()
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                Toast.makeText(context, "회원 탈퇴가 완료되었습니다", Toast.LENGTH_SHORT).show()
+                                startActivity(Intent(requireContext(), MainActivity::class.java))
+                                requireActivity().finish()
+                            }
+                        }
+                }
+        }
     }
 
     private fun updateLevelProgress() {
@@ -81,52 +203,109 @@ class MyPageFragment : Fragment() {
         }
     }
 
+    // 코인 충전 다이얼로그 함수 수정
     private fun showCoinChargeDialog() {
         val dialog = BottomSheetDialog(requireContext())
         val bindingDialog = DialogCoinChargeBinding.inflate(layoutInflater)
         dialog.setContentView(bindingDialog.root)
 
-        // 선택된 금액 저장 변수
         var selectedAmount = 0
 
-        // 라디오 버튼 클릭 리스너 설정
         bindingDialog.apply {
-            amount1000.setOnClickListener { selectedAmount = 1000 }
-            amount5000.setOnClickListener { selectedAmount = 5000 }
-            amount10000.setOnClickListener { selectedAmount = 10000 }
+            // 라디오 버튼 클릭 리스너
+            chargeAmountGroup.setOnCheckedChangeListener { _, checkedId ->
+                selectedAmount = when (checkedId) {
+                    R.id.amount1000 -> 1000
+                    R.id.amount5000 -> 5000
+                    R.id.amount10000 -> 10000
+                    else -> 0
+                }
+                // 금액 선택 시 충전 버튼 활성화
+                chargeButton.isEnabled = selectedAmount > 0
+            }
+
+            // 충전 버튼
+            chargeButton.isEnabled = false // 초기 상태는 비활성화
+            chargeButton.setOnClickListener {
+                if (selectedAmount > 0) {
+                    chargeCoin(selectedAmount) { success ->
+                        if (success) {
+                            dialog.dismiss()
+                        }
+                    }
+                }
+            }
 
             // 취소 버튼
             cancelButton.setOnClickListener {
                 dialog.dismiss()
             }
-
-            // 충전 버튼
-            chargeButton.setOnClickListener {
-                if (selectedAmount > 0) {
-                    // TODO: 실제 결제 처리 로직 구현
-                    processCoinCharge(selectedAmount)
-                    dialog.dismiss()
-                } else {
-                    Toast.makeText(requireContext(), "충전할 금액을 선택해주세요", Toast.LENGTH_SHORT).show()
-                }
-            }
         }
 
         dialog.show()
     }
+    // 코인 충전 처리 함수 추가
+    private fun chargeCoin(amount: Int, onComplete: (Boolean) -> Unit) {
+        auth.currentUser?.let { user ->
+            val userRef = firestore.collection("users").document(user.uid)
 
-    private fun processCoinCharge(amount: Int) {
-        // TODO: 실제 결제 처리 및 DB 업데이트
-        // 임시로 토스트 메시지만 표시
-        Toast.makeText(
-            requireContext(),
-            "${amount}코인이 충전되었습니다",
-            Toast.LENGTH_SHORT
-        ).show()
+            // 먼저 문서 존재 여부 확인
+            userRef.get().addOnSuccessListener { document ->
+                if (document.exists()) {
+                    // 문서가 존재하면 트랜잭션으로 업데이트
+                    firestore.runTransaction { transaction ->
+                        val snapshot = transaction.get(userRef)
+                        val currentCoins = snapshot.getLong("coins") ?: 0
+                        val newCoins = currentCoins + amount
 
-        // 코인 잔액 UI 업데이트
-        updateCoinBalance(amount)
+                        transaction.update(userRef, "coins", newCoins)
+                        true
+                    }.addOnSuccessListener { success ->
+                        if (success) {
+                            Toast.makeText(context, "${amount}코인이 충전되었습니다", Toast.LENGTH_SHORT).show()
+                            binding.coinAmount.text = (binding.coinAmount.text.toString().toIntOrNull() ?: 0 + amount).toString()
+                            onComplete(true)
+                        }
+                    }.addOnFailureListener { e ->
+                        Log.e("MyPageFragment", "Error charging coins", e)
+                        Toast.makeText(context, "충전 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                        onComplete(false)
+                    }
+                } else {
+                    // 문서가 없으면 새로 생성
+                    val userProfile = hashMapOf(
+                        "id" to user.uid,
+                        "username" to (user.displayName ?: "User"),
+                        "email" to (user.email ?: ""),
+                        "level" to 1,
+                        "experience" to 0,
+                        "coins" to amount.toLong(),
+                        "registrationDate" to System.currentTimeMillis()
+                    )
+
+                    userRef.set(userProfile)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "${amount}코인이 충전되었습니다", Toast.LENGTH_SHORT).show()
+                            binding.coinAmount.text = amount.toString()
+                            onComplete(true)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("MyPageFragment", "Error creating user profile", e)
+                            Toast.makeText(context, "프로필 생성 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                            onComplete(false)
+                        }
+                }
+            }.addOnFailureListener { e ->
+                Log.e("MyPageFragment", "Error checking document", e)
+                Toast.makeText(context, "문서 확인 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                onComplete(false)
+            }
+        } ?: run {
+            Toast.makeText(context, "로그인이 필요합니다", Toast.LENGTH_SHORT).show()
+            onComplete(false)
+        }
     }
+
 
     private fun updateCoinBalance(addedAmount: Int) {
         val currentBalance = binding.coinAmount.text.toString().toIntOrNull() ?: 0
@@ -163,13 +342,6 @@ class MyPageFragment : Fragment() {
         dialog.show()
     }
 
-    private fun updateUserProfile(newPassword: String, newNickname: String) {
-        // TODO: 실제 DB 업데이트 로직 구현
-        Toast.makeText(requireContext(), "회원 정보가 수정되었습니다", Toast.LENGTH_SHORT).show()
-
-        // 닉네임 UI 업데이트
-        binding.welcomeText.text = "${newNickname}님, 환영합니다!"
-    }
 
     private fun showWithdrawalDialog() {
         val dialog = BottomSheetDialog(requireContext())
@@ -196,14 +368,5 @@ class MyPageFragment : Fragment() {
         }
 
         dialog.show()
-    }
-
-    private fun processWithdrawal() {
-        // TODO: 실제 회원 탈퇴 처리 로직 구현
-        Toast.makeText(requireContext(), "회원 탈퇴가 완료되었습니다", Toast.LENGTH_SHORT).show()
-
-        // MainActivity로 이동
-        startActivity(Intent(requireContext(), MainActivity::class.java))
-        requireActivity().finish()
     }
 }

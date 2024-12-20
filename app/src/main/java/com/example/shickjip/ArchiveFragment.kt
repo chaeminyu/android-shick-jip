@@ -38,8 +38,12 @@ class ArchiveFragment : Fragment() {
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // 현재 사용자의 정보 가져오기
-        auth.currentUser?.let { user ->
+
+        // 현재 로그인된 사용자의 UID 가져오기
+        val currentUser = FirebaseAuth.getInstance().currentUser
+
+        // Firestore에서 사용자 정보 조회
+        currentUser?.let { user ->
             firestore.collection("users")
                 .whereEqualTo("email", user.email)
                 .get()
@@ -49,7 +53,12 @@ class ArchiveFragment : Fragment() {
                         binding.profileName.text = "${username}'s collection"
                     }
                 }
+                .addOnFailureListener { e ->
+                    Log.e("ArchiveFragment", "Error fetching user data", e)
+                    binding.profileName.text = "My collection"
+                }
         }
+
         setupRecyclerView()
         loadPlants()
     }
@@ -90,6 +99,7 @@ class ArchiveFragment : Fragment() {
         firestore.collection("plants")
             .whereEqualTo("userId", currentUser.uid)
             .orderBy("registrationDate", Query.Direction.DESCENDING)
+            // 이 부분이 인덱스가 필요한 복합 쿼리입니다
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.w("ArchiveFragment", "Listen failed.", e)
@@ -97,20 +107,15 @@ class ArchiveFragment : Fragment() {
                 }
 
                 if (snapshot != null && !snapshot.isEmpty) {
-                    Log.d("Firestore", "Fetched plants: ${snapshot.documents}")
                     plantsList.clear()
                     for (doc in snapshot.documents) {
-                        Log.d("Firestore", "Plant data: ${doc.data}")
                         doc.toObject(Plant::class.java)?.let { plant ->
                             plantsList.add(plant)
                         }
                     }
                     archiveAdapter.notifyDataSetChanged()
-                } else {
-                    Log.d("Firestore", "No plants found for user ${currentUser.uid}")
                 }
             }
-
     }
 
     override fun onDestroyView() {
