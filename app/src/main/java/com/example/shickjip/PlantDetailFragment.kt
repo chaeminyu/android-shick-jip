@@ -47,6 +47,27 @@ class PlantDetailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupViews()
         loadPlantDetails()
+        setupListeners()
+    }
+    private fun setupListeners() {
+        // 닉네임 변경 버튼 클릭
+        binding.editNicknameButton.setOnClickListener {
+            binding.nicknameEditText.visibility = View.VISIBLE // EditText 표시
+            binding.saveNicknameButton.visibility = View.VISIBLE // 저장 버튼 표시
+            binding.editNicknameButton.visibility = View.GONE // 변경 버튼 숨김
+        }
+
+        // 닉네임 저장 버튼 클릭
+        binding.saveNicknameButton.setOnClickListener {
+            val newNickname = binding.nicknameEditText.text.toString().trim()
+            if (newNickname.isNotEmpty()) {
+                plantId?.let { id ->
+                    updateNickname(id, newNickname)
+                }
+            } else {
+                Toast.makeText(requireContext(), "닉네임을 입력해주세요.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupViews() {
@@ -151,6 +172,19 @@ class PlantDetailFragment : Fragment() {
                 diaryEntriesLayout.addView(entryView)
             }
         }
+    }
+    private fun updateNickname(plantId: String, newNickname: String) {
+        firestore.collection("plants").document(plantId)
+            .update("nickname", newNickname)
+            .addOnSuccessListener {
+                binding.nicknameEditText.visibility = View.GONE // EditText 숨김
+                binding.saveNicknameButton.visibility = View.GONE // 저장 버튼 숨김
+                binding.editNicknameButton.visibility = View.VISIBLE // 변경 버튼 다시 표시
+                Toast.makeText(requireContext(), "닉네임이 저장되었습니다!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(requireContext(), "닉네임 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
     }
     private fun updateComments(container: LinearLayout, comments: List<DiaryComment>) {
         container.removeAllViews()
