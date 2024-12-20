@@ -30,7 +30,7 @@ class PlantInfoDialog(
     private val description: String,
     private val imageUri: Uri?,
     private val imagePath: String,
-    private val onButtonClick: () -> Unit // 버튼 클릭 콜백
+    private val onSuccess: () -> Unit // Success callback으로 변경
 ) : Dialog(context) {
 
     private lateinit var binding: ItemInfomodalBinding
@@ -68,15 +68,13 @@ class PlantInfoDialog(
                     .load(imageUri)
                     .into(plantImage)
             } else if (imagePath.isNotEmpty()) {
-                // 로컬 파일 경로로 이미지를 로드 (저장된 데이터)
                 Glide.with(context)
                     .load(File(imagePath))
                     .into(plantImage)
             }
 
             registerButton.setOnClickListener {
-                onButtonClick()
-                dismiss()
+                registerPlant()
             }
 
             closeButton.setOnClickListener {
@@ -113,9 +111,7 @@ class PlantInfoDialog(
 
         try {
             // 이미지를 내부 저장소에 저장
-            val file = saveImageToInternalStorage(imageUri!!)
-
-            // Firestore에 파일 경로 저장
+            val file = saveImageToInternalStorage(imageUri)
             saveToFirestore(currentUser.uid, file.absolutePath)
         } catch (e: Exception) {
             Log.e("ImageSave", "이미지 저장 실패", e)
@@ -140,7 +136,7 @@ class PlantInfoDialog(
             userId = userId,
             name = title,
             description = description,
-            imagePath = filePath, // 파일 경로를 저장
+            imagePath = filePath,
             captureDate = System.currentTimeMillis(),
             registrationDate = System.currentTimeMillis()
         )
@@ -149,14 +145,16 @@ class PlantInfoDialog(
             .document(plant.id)
             .set(plant)
             .addOnSuccessListener {
-                handleSuccess()
+                Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
+                onSuccess() // Success callback 호출
+                dismiss()
             }
             .addOnFailureListener { e ->
                 Log.e("Firestore", "Firestore 데이터 저장 실패", e)
-                handleError("Firestore 데이터 저장 실패: ${e.message}")
+                handleError("도감 등록 실패: ${e.message}")
+                binding.registerButton.isEnabled = true
             }
     }
-
 
 
 
@@ -189,32 +187,10 @@ class PlantInfoDialog(
 
     private fun handleSuccess() {
         Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
-        onButtonClick()
+        onSuccess()
         dismiss()
     }
 
-    private fun savePlantToFirestore(userId: String, imageUrl: String) {
-        val plant = Plant(
-            id = UUID.randomUUID().toString(),
-            userId = userId,
-            name = title,
-            description = description,
-            imagePath = imagePath, // Use imagePath from constructor
-            captureDate = System.currentTimeMillis()
-        )
-
-        firestore.collection("plants")
-            .document(plant.id) // Use the generated ID
-            .set(plant)
-            .addOnSuccessListener {
-                Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
-                onButtonClick()
-                dismiss()
-            }
-            .addOnFailureListener {
-                handleError("등록 실패")
-            }
-    }
 
     private fun handleError(message: String) {
         binding.registerButton.isEnabled = true
