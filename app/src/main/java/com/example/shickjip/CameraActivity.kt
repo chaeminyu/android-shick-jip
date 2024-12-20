@@ -2,7 +2,14 @@ package com.example.shickjip
 
 import com.example.shickjip.BuildConfig
 import android.Manifest
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.ImageButton
@@ -19,6 +26,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.shickjip.api.RetrofitClient
 import com.example.shickjip.databinding.ActivityCameraBinding
+import com.example.shickjip.models.Plant
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -28,10 +38,13 @@ import okhttp3.RequestBody
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.UUID
 
 class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraBinding
     private var imageCapture: ImageCapture? = null
+    private var lensFacing = CameraSelector.LENS_FACING_BACK
+    private var flashMode = ImageCapture.FLASH_MODE_OFF
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +94,37 @@ class CameraActivity : AppCompatActivity() {
             animateCaptureButton()
             takePhoto()
         }
+        // 플래시 버튼 클릭 리스너
+        binding.flashButton.setOnClickListener {
+            toggleFlash()
+        }
+
+        // 카메라 전환 버튼 클릭 리스너
+        binding.switchCameraButton.setOnClickListener {
+            toggleCamera()
+        }
+    }
+    private fun toggleFlash() {
+        flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
+            binding.flashButton.setImageResource(R.drawable.ic_flash_on)
+            ImageCapture.FLASH_MODE_ON
+        } else {
+            binding.flashButton.setImageResource(R.drawable.ic_flash_off)
+            ImageCapture.FLASH_MODE_OFF
+        }
+
+        // 캡쳐 설정 업데이트
+        imageCapture?.flashMode = flashMode
+    }
+
+    private fun toggleCamera() {
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+            CameraSelector.LENS_FACING_FRONT
+        } else {
+            CameraSelector.LENS_FACING_BACK
+        }
+        // 카메라 재시작
+        startCamera()
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -134,18 +178,63 @@ class CameraActivity : AppCompatActivity() {
                     }
 
                     override fun onError(exc: ImageCaptureException) {
+                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                        Toast.makeText(this@CameraActivity, "촬영 실패: ${exc.message}", Toast.LENGTH_SHORT).show()
                         showScanDialog(ModalState.FAILURE) {}
                     }
                 }
             )
         }
     }
+    private fun showPlantInfoDialog(title: String, description: String, photoFile: File) {
+        val plantInfoDialog = PlantInfoDialog(
+            context = this,
+            title = title,
+            description = description,
+            imageUri = Uri.fromFile(photoFile),
+            imagePath = photoFile.absolutePath,
+            onButtonClick = {
+                val plant = Plant(
+                    id = UUID.randomUUID().toString(),
+                    userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                    name = title,
+                    description = description,
+                    imagePath = photoFile.absolutePath,
+                    captureDate = System.currentTimeMillis()
+                )
+
+                FirebaseFirestore.getInstance()
+                    .collection("plants")
+                    .document(plant.id)
+                    .set(plant)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "도감에 저장되었습니다", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(this, "저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+            }
+        )
+        plantInfoDialog.show()
+    }
 
     private suspend fun identifyPlantWithApi(photoFile: File) {
+        if (!isNetworkAvailable()) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@CameraActivity,
+                    "네트워크 연결을 확인해주세요",
+                    Toast.LENGTH_SHORT).show()
+                showScanDialog(ModalState.FAILURE) {}
+            }
+            return
+        }
         try {
-            // MultipartBody.Part 생성
-            val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), photoFile)
-            val imagePart = MultipartBody.Part.createFormData("images", photoFile.name, requestFile)
+            // 이미지 최적화
+            val optimizedFile = optimizeImage(photoFile)
+
+            val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), optimizedFile)
+            val imagePart = MultipartBody.Part.createFormData("images", optimizedFile.name, requestFile)
 
             // API 호출
             val response = RetrofitClient.plantApiService.identifyPlant(
@@ -157,6 +246,7 @@ class CameraActivity : AppCompatActivity() {
                 if (response.isSuccessful && response.body() != null) {
                     val plantResponse = response.body()!!
                     val suggestion = plantResponse.result.classification.suggestions.firstOrNull()
+
 
                     if (suggestion != null) {
                         showScanDialog(ModalState.SUCCESS) {
@@ -177,13 +267,22 @@ class CameraActivity : AppCompatActivity() {
 
                             showPlantInfoDialog(
                                 title = displayName,
-                                description = description
+                                description = description,
+                                photoFile = photoFile
                             )
+                            val result = Intent().apply {
+                                putExtra("plant_name", commonNames)
+                                putExtra("plant_description", description)
+                                putExtra("image_path", optimizedFile.absolutePath)
+                                putExtra("captured_date", System.currentTimeMillis())
+                            }
+                            setResult(RESULT_OK, result)
                         }
                     } else {
                         showScanDialog(ModalState.FAILURE) {}
                     }
-                } else {
+                }
+                else {
                     showScanDialog(ModalState.FAILURE) {}
                 }
             }
@@ -193,6 +292,38 @@ class CameraActivity : AppCompatActivity() {
                 showScanDialog(ModalState.FAILURE) {}
             }
         }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkCapabilities = connectivityManager.activeNetwork ?: return false
+        val actNw = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+        return actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+    }
+
+    // 이미지 최적화를 위함
+    private fun optimizeImage(originalFile: File): File {
+        // 이미지 최적화 로직
+        val bitmap = BitmapFactory.decodeFile(originalFile.absolutePath)
+        val maxSize = 1024 // 최대 1024px
+
+        val ratio = Math.min(
+            maxSize.toFloat() / bitmap.width,
+            maxSize.toFloat() / bitmap.height
+        )
+
+        val width = (bitmap.width * ratio).toInt()
+        val height = (bitmap.height * ratio).toInt()
+
+        val resized = Bitmap.createScaledBitmap(bitmap, width, height, true)
+
+        val optimizedFile = File(originalFile.parent, "optimized_${originalFile.name}")
+        optimizedFile.outputStream().use { out ->
+            resized.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        }
+
+        return optimizedFile
     }
 
     // 카메라 권한 체크 및 카메라 시작
@@ -214,9 +345,12 @@ class CameraActivity : AppCompatActivity() {
 
             try {
                 cameraProvider.unbindAll()
+                val cameraSelector = CameraSelector.Builder()
+                    .requireLensFacing(lensFacing)
+                    .build()
                 cameraProvider.bindToLifecycle(
                     this,
-                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    cameraSelector,
                     preview,
                     imageCapture
                 )
@@ -240,16 +374,6 @@ class CameraActivity : AppCompatActivity() {
         dialog.show(supportFragmentManager, "ScanDialog")
     }
 
-    private fun showPlantInfoDialog(title: String, description: String) {
-        val plantInfoDialog = PlantInfoDialog(
-            context = this,
-            title = title,
-            description = description
-        ) {
-            finish() // 버튼 클릭 시 현재 액티비티 종료
-        }
-        plantInfoDialog.show()
-    }
 
     private fun animateCaptureButton() {
         binding.captureButton.animate()

@@ -35,6 +35,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            isDebuggable = true
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -58,6 +61,8 @@ dependencies {
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.appcheck.debug)
+
     implementation(libs.firebase.auth.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -79,4 +84,14 @@ dependencies {
     implementation("me.relex:circleindicator:2.1.6")
     // 추가된 Guava 라이브러리
     implementation("com.google.guava:guava:31.1-jre")
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
+    // 도감 날짜용
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    // 다이어리 작성
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
 }
