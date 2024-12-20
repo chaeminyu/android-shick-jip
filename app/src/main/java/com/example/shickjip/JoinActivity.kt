@@ -73,7 +73,8 @@ class JoinActivity : AppCompatActivity() {
         val user = hashMapOf( // 사용자 정보를 해시맵으로 구성
             "uid" to uid,
             "username" to username,
-            "email" to email
+            "email" to email,
+            "coin" to 0
         )
 
         // Firestore에 UID를 문서 ID로 사용하여 저장
