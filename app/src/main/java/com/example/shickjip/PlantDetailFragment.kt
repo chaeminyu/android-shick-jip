@@ -90,14 +90,25 @@ class PlantDetailFragment : Fragment() {
 
     private fun updateUI(plant: Plant) {
         binding.apply {
-            plantName.text = plant.name
+            // 식물의 common name이 있으면 사용하고, 없으면 학명 사용
+            val displayName = if (plant.name.contains(" (")) {
+                plant.name.split(" (")[0]  // common name만 추출
+            } else {
+                plant.name  // 학명만 있는 경우 그대로 사용
+            }
+
+            plantName.text = displayName
             plantDescription.text = plant.description
             registrationDate.text = SimpleDateFormat("yyyy년 MM월 dd일 등록", Locale.getDefault())
                 .format(Date(plant.registrationDate))
 
-            Glide.with(requireContext())
-                .load(plant.imagePath)
-                .into(plantImage)
+            // 이미지 로딩
+            if (plant.imagePath.isNotEmpty()) {
+                Glide.with(requireContext())
+                    .load(plant.imagePath)
+                    .error(R.drawable.error_image)
+                    .into(plantImage)
+            }
 
             // 일기 목록 및 댓글 표시
             diaryEntriesLayout.removeAllViews()

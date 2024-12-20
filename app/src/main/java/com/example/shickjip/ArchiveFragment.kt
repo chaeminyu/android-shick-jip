@@ -38,8 +38,12 @@ class ArchiveFragment : Fragment() {
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // 현재 사용자의 정보 가져오기
-        auth.currentUser?.let { user ->
+
+        // 현재 로그인된 사용자의 UID 가져오기
+        val currentUser = FirebaseAuth.getInstance().currentUser
+
+        // Firestore에서 사용자 정보 조회
+        currentUser?.let { user ->
             firestore.collection("users")
                 .whereEqualTo("email", user.email)
                 .get()
@@ -49,7 +53,12 @@ class ArchiveFragment : Fragment() {
                         binding.profileName.text = "${username}'s collection"
                     }
                 }
+                .addOnFailureListener { e ->
+                    Log.e("ArchiveFragment", "Error fetching user data", e)
+                    binding.profileName.text = "My collection"
+                }
         }
+
         setupRecyclerView()
         loadPlants()
     }
