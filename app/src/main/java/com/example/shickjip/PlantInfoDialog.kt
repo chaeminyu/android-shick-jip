@@ -4,6 +4,8 @@ import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -11,17 +13,22 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.widget.Toast
+import com.bumptech.glide.Glide
 import com.example.shickjip.databinding.ItemInfomodalBinding
 import com.example.shickjip.models.Plant
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.io.File
+import java.util.UUID
 
 class PlantInfoDialog(
     context: Context,
     private val title: String,
     private val description: String,
+    private val imageUri: Uri?,
     private val imagePath: String,
     private val onButtonClick: () -> Unit // 버튼 클릭 콜백
 ) : Dialog(context) {
@@ -30,11 +37,19 @@ class PlantInfoDialog(
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val storage = FirebaseStorage.getInstance()
+    companion object {
+        private const val PLANT_IMAGE_FOLDER = "plant_images"
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Firebase App Check 초기화
+        val appCheck = FirebaseAppCheck.getInstance()
+        appCheck.installAppCheckProviderFactory(
+            DebugAppCheckProviderFactory.getInstance()
+        )
         binding = ItemInfomodalBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -44,6 +59,30 @@ class PlantInfoDialog(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
+        binding.apply {
+            plantTitle.text = title
+            plantDescription.text = description
+
+            if (imageUri != null) {
+                Glide.with(context)
+                    .load(imageUri)
+                    .into(plantImage)
+            } else if (imagePath.isNotEmpty()) {
+                // 로컬 파일 경로로 이미지를 로드 (저장된 데이터)
+                Glide.with(context)
+                    .load(File(imagePath))
+                    .into(plantImage)
+            }
+
+            registerButton.setOnClickListener {
+                onButtonClick()
+                dismiss()
+            }
+
+            closeButton.setOnClickListener {
+                dismiss()
+            }
+        }
 
         // 텍스트 설정
         binding.plantTitle.text = title
@@ -51,60 +90,134 @@ class PlantInfoDialog(
 
         // 버튼 설정
         binding.registerButton.setOnClickListener {
-            onButtonClick() // 콜백 호출
-            dismiss() // 다이얼로그 닫기
+            registerPlant()
         }
 
         binding.closeButton.setOnClickListener {
-            onButtonClick() // 콜백 호출
-            dismiss() // 다이얼로그 닫기
+            dismiss()
         }
+
     }
     private fun registerPlant() {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
+        val currentUser = auth.currentUser ?: run {
             Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (imageUri == null) {
+            handleError("이미지가 선택되지 않았습니다.")
             return
         }
 
         binding.registerButton.isEnabled = false
 
-        // Upload image to Firebase Storage
-        val imageFile = File(imagePath)
-        val imageRef = storage.reference.child("plants/${currentUser.uid}/${System.currentTimeMillis()}_${imageFile.name}")
+        try {
+            // 이미지를 내부 저장소에 저장
+            val file = saveImageToInternalStorage(imageUri!!)
 
-        imageRef.putFile(Uri.fromFile(imageFile))
-            .addOnSuccessListener { taskSnapshot ->
-                // Get download URL
-                imageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                    // Create plant document
-                    val plant = Plant(
-                        userId = currentUser.uid,
-                        name = title,
-                        description = description,
-                        imagePath = downloadUri.toString(),
-                        captureDate = System.currentTimeMillis()
-                    )
+            // Firestore에 파일 경로 저장
+            saveToFirestore(currentUser.uid, file.absolutePath)
+        } catch (e: Exception) {
+            Log.e("ImageSave", "이미지 저장 실패", e)
+            handleError("이미지 저장 실패: ${e.message}")
+        }
+    }
 
-                    // Save to Firestore
-                    firestore.collection("plants")
-                        .add(plant)
-                        .addOnSuccessListener {
-                            Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
-                            onButtonClick()
-                            dismiss()
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e("PlantInfoDialog", "Error adding plant", e)
-                            Toast.makeText(context, "등록에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
-                            binding.registerButton.isEnabled = true
-                        }
-                }
+    private fun saveImageToInternalStorage(imageUri: Uri): File {
+        val contextResolver = context.contentResolver
+        val inputStream = contextResolver.openInputStream(imageUri) ?: throw Exception("이미지 스트림을 열 수 없습니다.")
+        val imageFile = File(context.filesDir, "Plant_${System.currentTimeMillis()}.jpg")
+
+        imageFile.outputStream().use { output ->
+            inputStream.copyTo(output)
+        }
+        return imageFile
+    }
+
+    private fun saveToFirestore(userId: String, filePath: String) {
+        val plant = Plant(
+            id = UUID.randomUUID().toString(),
+            userId = userId,
+            name = title,
+            description = description,
+            imagePath = filePath, // 파일 경로를 저장
+            captureDate = System.currentTimeMillis(),
+            registrationDate = System.currentTimeMillis()
+        )
+
+        firestore.collection("plants")
+            .document(plant.id)
+            .set(plant)
+            .addOnSuccessListener {
+                handleSuccess()
             }
             .addOnFailureListener { e ->
-                Log.e("PlantInfoDialog", "Error uploading image", e)
-                Toast.makeText(context, "이미지 업로드에 실패했습니다. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
-                binding.registerButton.isEnabled = true
+                Log.e("Firestore", "Firestore 데이터 저장 실패", e)
+                handleError("Firestore 데이터 저장 실패: ${e.message}")
             }
+    }
+
+
+
+
+//    private fun uploadImage(plantId: String, userId: String) {
+//        try {
+//            val storageRef = storage.reference
+//                .child("plant_images") // Root folder
+//                .child("${userId}_${plantId}.jpg") // Simplified path
+//
+//            val contentResolver = context.contentResolver
+//            imageUri?.let { uri ->
+//                val stream = contentResolver.openInputStream(uri)
+//                val bytes = stream?.readBytes()
+//                if (bytes != null) {
+//                    storageRef.putBytes(bytes)
+//                        .addOnSuccessListener {
+//                            handleSuccess()
+//                        }
+//                        .addOnFailureListener { e ->
+//                            Log.e("Storage", "Upload failed", e)
+//                            handleError("이미지 업로드 실패")
+//                        }
+//                }
+//            }
+//        } catch (e: Exception) {
+//            Log.e("Storage", "Error preparing upload", e)
+//            handleError("업로드 준비 실패")
+//        }
+//    }
+
+    private fun handleSuccess() {
+        Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
+        onButtonClick()
+        dismiss()
+    }
+
+    private fun savePlantToFirestore(userId: String, imageUrl: String) {
+        val plant = Plant(
+            id = UUID.randomUUID().toString(),
+            userId = userId,
+            name = title,
+            description = description,
+            imagePath = imagePath, // Use imagePath from constructor
+            captureDate = System.currentTimeMillis()
+        )
+
+        firestore.collection("plants")
+            .document(plant.id) // Use the generated ID
+            .set(plant)
+            .addOnSuccessListener {
+                Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
+                onButtonClick()
+                dismiss()
+            }
+            .addOnFailureListener {
+                handleError("등록 실패")
+            }
+    }
+
+    private fun handleError(message: String) {
+        binding.registerButton.isEnabled = true
+        Toast.makeText(context, "$message. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
     }
 }

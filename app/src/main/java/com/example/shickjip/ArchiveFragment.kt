@@ -1,10 +1,14 @@
 package com.example.shickjip
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -31,27 +35,20 @@ class ArchiveFragment : Fragment() {
         _binding = FragmentArchiveBinding.inflate(inflater, container, false)
         return binding.root
     }
-
-//        // set layout manager - linear
-//        val linearLayoutManager = LinearLayoutManager(activity, LinearLayoutManager.HORIZONTAL, false)
-//        // Setting up RecyclerView - friends list
-//        val friends = mutableListOf("친구1", "친구2", "친구3", "친구4", "친구5", "친구6", "친구7")
-//        binding.friendsList.layoutManager = linearLayoutManager
-//        val friendsAdapter = FriendsAdapter(friends)
-//        binding.friendsList.adapter = friendsAdapter
-//
-//        //set layout manager - grid
-//        var gridLayoutManager = GridLayoutManager(activity, 2)
-//        // Setting up RecyclerView - archive list
-//        val archive = mutableListOf("아카이브1", "아카이브2", "아카이브3", "아카이브4", "아카이브5", "아카이브6", "아카이브7")
-//        binding.archiveList.layoutManager = gridLayoutManager
-//        val archiveAdapter = ArchiveAdapter(archive)
-//        binding.archiveList.adapter = archiveAdapter
-//
-//        return binding.root
-//    }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // 현재 사용자의 정보 가져오기
+        auth.currentUser?.let { user ->
+            firestore.collection("users")
+                .whereEqualTo("email", user.email)
+                .get()
+                .addOnSuccessListener { documents ->
+                    if (!documents.isEmpty) {
+                        val username = documents.documents[0].getString("username") ?: "사용자"
+                        binding.profileName.text = "${username}'s collection"
+                    }
+                }
+        }
         setupRecyclerView()
         loadPlants()
     }
@@ -69,6 +66,14 @@ class ArchiveFragment : Fragment() {
         }
     }
 
+    //chatgpt 추천코드
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkCapabilities = connectivityManager.activeNetwork ?: return false
+        val actNw = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+        return actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+    }
+
     private fun loadPlants() {
         val currentUser = auth.currentUser ?: return
 
@@ -81,16 +86,21 @@ class ArchiveFragment : Fragment() {
                     return@addSnapshotListener
                 }
 
-                if (snapshot != null) {
+                if (snapshot != null && !snapshot.isEmpty) {
+                    Log.d("Firestore", "Fetched plants: ${snapshot.documents}")
                     plantsList.clear()
                     for (doc in snapshot.documents) {
+                        Log.d("Firestore", "Plant data: ${doc.data}")
                         doc.toObject(Plant::class.java)?.let { plant ->
                             plantsList.add(plant)
                         }
                     }
                     archiveAdapter.notifyDataSetChanged()
+                } else {
+                    Log.d("Firestore", "No plants found for user ${currentUser.uid}")
                 }
             }
+
     }
 
     override fun onDestroyView() {

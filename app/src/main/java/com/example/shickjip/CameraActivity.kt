@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.ImageButton
@@ -25,6 +26,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.shickjip.api.RetrofitClient
 import com.example.shickjip.databinding.ActivityCameraBinding
+import com.example.shickjip.models.Plant
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,6 +38,7 @@ import okhttp3.RequestBody
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.UUID
 
 class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraBinding
@@ -173,6 +178,8 @@ class CameraActivity : AppCompatActivity() {
                     }
 
                     override fun onError(exc: ImageCaptureException) {
+                        Log.e(TAG, "Photo capture failed: ${exc.message}", exc)
+                        Toast.makeText(this@CameraActivity, "촬영 실패: ${exc.message}", Toast.LENGTH_SHORT).show()
                         showScanDialog(ModalState.FAILURE) {}
                     }
                 }
@@ -184,10 +191,31 @@ class CameraActivity : AppCompatActivity() {
             context = this,
             title = title,
             description = description,
-            imagePath = photoFile.absolutePath
-        ) {
-            finish() // 등록 성공 후 카메라 닫음
-        }
+            imageUri = Uri.fromFile(photoFile),
+            imagePath = photoFile.absolutePath,
+            onButtonClick = {
+                val plant = Plant(
+                    id = UUID.randomUUID().toString(),
+                    userId = FirebaseAuth.getInstance().currentUser?.uid ?: "",
+                    name = title,
+                    description = description,
+                    imagePath = photoFile.absolutePath,
+                    captureDate = System.currentTimeMillis()
+                )
+
+                FirebaseFirestore.getInstance()
+                    .collection("plants")
+                    .document(plant.id)
+                    .set(plant)
+                    .addOnSuccessListener {
+                        Toast.makeText(this, "도감에 저장되었습니다", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(this, "저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+            }
+        )
         plantInfoDialog.show()
     }
 
@@ -204,9 +232,9 @@ class CameraActivity : AppCompatActivity() {
         try {
             // 이미지 최적화
             val optimizedFile = optimizeImage(photoFile)
-            // MultipartBody.Part 생성
-            val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), photoFile)
-            val imagePart = MultipartBody.Part.createFormData("images", photoFile.name, requestFile)
+
+            val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), optimizedFile)
+            val imagePart = MultipartBody.Part.createFormData("images", optimizedFile.name, requestFile)
 
             // API 호출
             val response = RetrofitClient.plantApiService.identifyPlant(

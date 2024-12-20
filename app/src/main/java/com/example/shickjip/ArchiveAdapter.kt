@@ -1,5 +1,6 @@
 package com.example.shickjip
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -29,6 +30,7 @@ class ArchiveAdapter(
 
     override fun onBindViewHolder(holder: ArchiveViewHolder, position: Int) {
         val plant = plants[position]
+        holder.itemView.setOnClickListener { onItemClick(plant.id) }
 
         holder.binding.apply {
             officialName.text = plant.name
@@ -39,9 +41,12 @@ class ArchiveAdapter(
             Glide.with(root.context)
                 .load(plant.imagePath)
                 .placeholder(R.drawable.archive_default)
+                .error(R.drawable.error_image) // 오류 시 표시할 이미지 추가
                 .into(archiveImage)
+            Log.d("ArchiveAdapter", "Loading image: ${plant.imagePath}")
 
-            holder.itemView.setOnClickListener { onItemClick(plant.id) }
+
+
         }
 
     }
