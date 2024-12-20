@@ -84,75 +84,70 @@ class MyPageFragment : Fragment() {
         }
     }
     private fun processCoinCharge(amount: Int) {
-        auth.currentUser?.let { user ->
-            firestore.collection("users")
-                .whereEqualTo("email", user.email)
-                .get()
-                .addOnSuccessListener { documents ->
-                    if (!documents.isEmpty) {
-                        val userDoc = documents.documents[0]
-                        val currentCoins = userDoc.getLong("coins") ?: 0
+        val currentUser = auth.currentUser ?: return
 
-                        userDoc.reference.update("coins", currentCoins + amount)
-                            .addOnSuccessListener {
-                                Toast.makeText(context, "${amount}코인이 충전되었습니다", Toast.LENGTH_SHORT).show()
-                            }
-                            .addOnFailureListener {
-                                Toast.makeText(context, "코인 충전에 실패했습니다", Toast.LENGTH_SHORT).show()
-                            }
-                    }
-                }
+        firestore.runTransaction { transaction ->
+            val userRef = firestore.collection("users").document(currentUser.uid)
+            val snapshot = transaction.get(userRef)
+            val currentCoins = snapshot.getLong("coins") ?: 0
+
+            transaction.update(userRef, "coins", currentCoins + amount)
+            // 경험치도 함께 증가
+            val currentExp = snapshot.getLong("experience") ?: 0
+            transaction.update(userRef, "experience", currentExp + (amount / 10))
+        }.addOnSuccessListener {
+            Toast.makeText(context, "${amount}코인이 충전되었습니다", Toast.LENGTH_SHORT).show()
+            loadUserProfile() // UI 새로고침
+        }.addOnFailureListener { e ->
+            Toast.makeText(context, "충전 실패: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun updateUserProfile(newPassword: String, newNickname: String) {
-        auth.currentUser?.let { user ->
-            // 비밀번호 업데이트
-            user.updatePassword(newPassword)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        // Firestore 사용자 정보 업데이트
-                        firestore.collection("users")
-                            .whereEqualTo("email", user.email)
-                            .get()
-                            .addOnSuccessListener { documents ->
-                                if (!documents.isEmpty) {
-                                    documents.documents[0].reference
-                                        .update("username", newNickname)
-                                        .addOnSuccessListener {
-                                            Toast.makeText(context, "회원 정보가 수정되었습니다", Toast.LENGTH_SHORT).show()
-                                        }
-                                }
-                            }
-                    } else {
-                        Toast.makeText(context, "비밀번호 변경에 실패했습니다", Toast.LENGTH_SHORT).show()
-                    }
+        val currentUser = auth.currentUser ?: return
+
+        // 비밀번호 업데이트
+        currentUser.updatePassword(newPassword)
+            .addOnCompleteListener { passwordTask ->
+                if (passwordTask.isSuccessful) {
+                    // Firestore 사용자 정보 업데이트
+                    firestore.collection("users")
+                        .document(currentUser.uid)
+                        .update("username", newNickname)
+                        .addOnSuccessListener {
+                            Toast.makeText(context, "회원 정보가 수정되었습니다", Toast.LENGTH_SHORT).show()
+                            binding.welcomeText.text = "${newNickname}님, 환영합니다!"
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(context, "닉네임 변경 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                } else {
+                    Toast.makeText(context, "비밀번호 변경 실패", Toast.LENGTH_SHORT).show()
                 }
-        }
+            }
     }
     private fun processWithdrawal() {
-        auth.currentUser?.let { user ->
-            // Firestore 데이터 삭제
-            firestore.collection("users")
-                .whereEqualTo("email", user.email)
-                .get()
-                .addOnSuccessListener { documents ->
-                    if (!documents.isEmpty) {
-                        documents.documents[0].reference.delete()
+        val currentUser = auth.currentUser ?: return
+
+        // Firestore 데이터 삭제
+        firestore.collection("users")
+            .document(currentUser.uid)
+            .delete()
+            .addOnSuccessListener {
+                // Firebase Auth 계정 삭제
+                currentUser.delete()
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "회원 탈퇴가 완료되었습니다", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(requireContext(), MainActivity::class.java))
+                        requireActivity().finish()
                     }
-                }
-                .addOnCompleteListener {
-                    // Firebase Auth 계정 삭제
-                    user.delete()
-                        .addOnCompleteListener { task ->
-                            if (task.isSuccessful) {
-                                Toast.makeText(context, "회원 탈퇴가 완료되었습니다", Toast.LENGTH_SHORT).show()
-                                startActivity(Intent(requireContext(), MainActivity::class.java))
-                                requireActivity().finish()
-                            }
-                        }
-                }
-        }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "계정 삭제 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(context, "데이터 삭제 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun updateLevelProgress() {
