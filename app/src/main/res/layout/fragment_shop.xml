@@ -94,6 +94,16 @@
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+        <ImageView
+            android:id="@+id/back_icon"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
+            android:src="@drawable/back"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp" />
+
         <!-- 나무 이미지 -->
         <ImageView
             android:id="@+id/tree_banner"

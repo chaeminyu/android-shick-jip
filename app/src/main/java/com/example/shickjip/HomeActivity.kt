@@ -1,7 +1,9 @@
 package com.example.shickjip
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.ActivityHomeBinding
 
@@ -51,6 +53,36 @@ class HomeActivity : AppCompatActivity() {
                 binding.viewPager.setCurrentItem(homeIndex, true)
                 currentSelectedIndex = homeIndex
             }
+        }
+    }
+
+    fun showShopFragment() {
+        val shopFragment = ShopFragment()
+        supportFragmentManager.beginTransaction()
+            .setCustomAnimations(R.anim.slide_in_up, 0) // 진입 애니메이션 적용
+            .add(R.id.shopFragmentContainer, shopFragment)
+            .addToBackStack("ShopFragment") // 백스택에 태그 추가
+            .commit()
+
+        // BottomNavigationView 숨기기
+        binding.bottomNavigationView.visibility = View.GONE
+        binding.shopFragmentContainer.visibility = View.VISIBLE
+    }
+
+    fun hideShopFragment() {
+        val shopFragment = supportFragmentManager.findFragmentById(R.id.shopFragmentContainer)
+
+        if (shopFragment != null) {
+            supportFragmentManager.beginTransaction()
+                .setCustomAnimations(0, R.anim.slide_out_down) // 종료 애니메이션 적용
+                .remove(shopFragment)
+                .commit()
+
+            // 애니메이션 지속 시간만큼 지연 후 Visibility 변경
+            binding.shopFragmentContainer.postDelayed({
+                binding.shopFragmentContainer.visibility = View.GONE
+                binding.bottomNavigationView.visibility = View.VISIBLE
+            }, 300) // 애니메이션 지속 시간과 동일하게 설정
         }
     }
 }
