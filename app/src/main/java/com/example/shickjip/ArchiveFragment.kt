@@ -45,17 +45,17 @@ class ArchiveFragment : Fragment() {
         // Firestore에서 사용자 정보 조회
         currentUser?.let { user ->
             firestore.collection("users")
-                .whereEqualTo("email", user.email)
-                .get()
-                .addOnSuccessListener { documents ->
-                    if (!documents.isEmpty) {
-                        val username = documents.documents[0].getString("username") ?: "사용자"
+                .document(user.uid)
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) {
+                        Log.w("ArchiveFragment", "Listen failed.", e)
+                        return@addSnapshotListener
+                    }
+
+                    if (snapshot != null && snapshot.exists()) {
+                        val username = snapshot.getString("username") ?: "사용자"
                         binding.profileName.text = "${username}'s collection"
                     }
-                }
-                .addOnFailureListener { e ->
-                    Log.e("ArchiveFragment", "Error fetching user data", e)
-                    binding.profileName.text = "My collection"
                 }
         }
 
