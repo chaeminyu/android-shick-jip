@@ -12,8 +12,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.shickjip.databinding.ActivityJoinBinding
+import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.firestore
 
 class JoinActivity : AppCompatActivity() {
     val binding: ActivityJoinBinding by lazy { ActivityJoinBinding.inflate(layoutInflater) }
@@ -28,6 +31,7 @@ class JoinActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         //memo: 뒤로가기 버튼의 라벨 설정 : 따옴표안에넣으면댐
         supportActionBar?.title = ""
+        FirebaseApp.initializeApp(this)
 
         auth = FirebaseAuth.getInstance() //Firebase에서 인스턴스를 가져올 것이다!
         firestore = FirebaseFirestore.getInstance()
@@ -35,47 +39,52 @@ class JoinActivity : AppCompatActivity() {
         // 회원가입 버튼 클릭 시 로그인 화면으로 넘어감
         binding.joinbtn.setOnClickListener {
             registerUser()
-            val intent = Intent(this, LoginActivity::class.java)
-            startActivity(intent)
-            Log.d("JoinActivity", "go to LoginActivity")
         }
     }
 
-    private fun registerUser() { //xml에 있는 id의 이름을 가져와서 객체로 생성
+    private fun registerUser() {
         val username = binding.nickname.text.toString()
         val email = binding.email.text.toString()
         val password = binding.pwd.text.toString()
 
-        auth.createUserWithEmailAndPassword(email, password) //firebase 권한으로 email, password를 만든다.
+        if (username.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "모든 필드를 입력해주세요", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    // Firestore에 사용자 세부 정보 저장
-                    saveUserData(username, email)
-                    // 회원가입 성공 메시지 표시
-                    Toast.makeText(this, "회원가입 성공", Toast.LENGTH_SHORT).show() //Toast는 아래에 메세지를 띄워줍니다.
-                    // 메인 액티비티로 이동
+                    val uid = task.result?.user?.uid // FirebaseAuth로 생성된 UID 가져오기
+                    if (uid != null) {
+                        saveUserData(uid, username, email) // UID와 함께 Firestore에 사용자 정보 저장
+                    }
+                    Toast.makeText(this, "회원가입 성공", Toast.LENGTH_SHORT).show()
                     navigateToMainActivity()
                 } else {
-                    // 회원가입 실패 시 사용자에게 메시지 표시
                     Toast.makeText(this, "회원가입 실패: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    Log.e("JoinActivity", "회원가입 실패", task.exception)
                 }
             }
     }
-    private fun saveUserData(username: String, email: String) { //firebase에 저장
-        val user = hashMapOf( //해시맵으로 username, email 필드에 저장
+
+    private fun saveUserData(uid: String, username: String, email: String) {
+        Log.d("JoinActivity", "saveUserData called with UID: $uid, username: $username, email: $email")
+        val user = hashMapOf( // 사용자 정보를 해시맵으로 구성
+            "uid" to uid,
             "username" to username,
             "email" to email
         )
 
-        // 생성된 ID로 새 문서 추가
-        firestore.collection("users") //여기서! 컬렉션 이름과 같아야합니다
-            .add(user)
-            .addOnSuccessListener { documentReference ->
-                Log.d("RegisterActivity", "DocumentSnapshot added with ID: ${documentReference.id}")
+        // Firestore에 UID를 문서 ID로 사용하여 저장
+        firestore.collection("users")
+            .document(uid) // UID를 문서 ID로 지정
+            .set(user)
+            .addOnSuccessListener {
+                Log.d("JoinActivity", "사용자 데이터가 Firestore에 성공적으로 저장되었습니다.")
             }
             .addOnFailureListener { e ->
-                Log.e("RegisterActivity", "문서 추가 오류", e)
+                Log.e("JoinActivity", "Firestore 데이터 저장 실패", e)
             }
     }
 
@@ -85,46 +94,3 @@ class JoinActivity : AppCompatActivity() {
         finish()  // 현재 액티비티를 종료하여 뒤로가기 버튼으로 다시 돌아오지 않도록 한다.
     }
 }
-    /* todo: join 형식 check */
-    /*
-    private var passwordFlag = false
-    private var passwordCheckFlag = false
-
-    fun flagCheck() {
-        if (passwordFlag && passwordCheckFlag) {
-            binding.joinbtn.isEnabled = true
-        } else {
-            binding.joinbtn.isEnabled = false
-        }
-    }
-    private val passwordListener = object : TextWatcher {
-        override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-        }
-
-        override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
-        }
-
-        override fun afterTextChanged(s: Editable?) {
-            if (s != null) {
-                when {
-                    s.isEmpty() -> {
-                        binding.pwdInputLayout.error = "비밀번호를 입력해주세요."
-                        passwordFlag = false
-                    }
-                    !passwordRegex(s.toString()) -> {
-                        binding.pwdInputLayout.error = "비밀번호 양식이 일치하지 않습니다."
-                        passwordFlag = false
-                    }
-                    else -> {
-                        binding.pwdInputLayout.error = null
-                        passwordFlag = true
-                    }
-                }
-                flagCheck()
-            }
-        }
-    }
-    fun passwordRegex(password: String): Boolean {
-        return password.matches("^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[$@$!%*#?&.])[A-Za-z[0-9]$@$!%*#?&.]{8,16}$".toRegex())
-    }
-     */

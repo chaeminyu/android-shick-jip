@@ -70,8 +70,7 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!--memo: 비밀번호 제한 ~20자-->
-        <!--fixme: 비밀번호 min 4자 제한-->
+        <!--memo: 비밀번호 제한 6~20자-->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/pwdInputLayout"
             android:layout_width="300dp"
