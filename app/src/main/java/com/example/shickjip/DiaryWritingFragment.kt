@@ -1,5 +1,6 @@
 package com.example.shickjip
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
@@ -14,6 +15,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.shickjip.databinding.FragmentDiaryWritingBinding
 import com.example.shickjip.models.DiaryEntry
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -21,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.IOException
 import java.util.UUID
 
@@ -61,7 +65,11 @@ class DiaryWritingFragment : Fragment() {
 
     private fun setupViews() {
         binding.apply {
-            backButton.setOnClickListener {
+            binding.backButton.setOnClickListener {
+                // 뒤로가기 시 ViewPager를 다시 표시
+                (requireActivity() as HomeActivity).binding.viewPager.visibility = View.VISIBLE
+
+                // Fragment를 pop
                 parentFragmentManager.popBackStack()
             }
 
@@ -92,6 +100,15 @@ class DiaryWritingFragment : Fragment() {
     }
 
     private fun saveDiaryEntry() {
+        // 현재 로그인된 사용자 확인
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            // 로그인되지 않은 경우
+            Toast.makeText(context, "로그인이 필요합니다", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(requireContext(), LoginActivity::class.java))
+            return
+        }
+
         val content = binding.diaryContent.text.toString()
         if (content.isEmpty()) return
 
@@ -100,27 +117,57 @@ class DiaryWritingFragment : Fragment() {
 
         lifecycleScope.launch {
             try {
-                val imageUrl = selectedImageUri?.let { uploadImage(it) }
+                // 이미지가 있다면 내부 저장소에 저장
+                val imagePath = selectedImageUri?.let { uri ->
+                    saveImageToInternalStorage(uri).absolutePath
+                }
 
+                // 일기 엔트리 생성
                 val diaryEntry = DiaryEntry(
                     id = UUID.randomUUID().toString(),
                     content = content,
-                    imagePath = imageUrl,
+                    imagePath = imagePath,
                     date = System.currentTimeMillis()
                 )
 
+                // Firestore에 일기 추가
                 firestore.collection("plants").document(plantId)
                     .update("diaryEntries", FieldValue.arrayUnion(diaryEntry))
                     .await()
 
-                parentFragmentManager.popBackStack()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "일기가 저장되었습니다.", Toast.LENGTH_SHORT).show()
+                    parentFragmentManager.popBackStack()
+                }
 
             } catch (e: Exception) {
-                binding.saveButton.isEnabled = true
-                binding.progressBar.visibility = View.GONE
-                Toast.makeText(context, "일기 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    if (e is FirebaseAuthException) {
+                        // 인증 관련 에러 처리
+                        Toast.makeText(context, "로그인이 필요합니다", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(requireContext(), LoginActivity::class.java))
+                    } else {
+                        // 기타 에러 처리
+                        binding.saveButton.isEnabled = true
+                        binding.progressBar.visibility = View.GONE
+                        Toast.makeText(context, "일기 저장에 실패했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
+    }
+
+    private fun saveImageToInternalStorage(uri: Uri): File {
+        val contextResolver = requireContext().contentResolver
+        val inputStream = contextResolver.openInputStream(uri)
+            ?: throw Exception("이미지 스트림을 열 수 없습니다.")
+
+        val imageFile = File(requireContext().filesDir, "Diary_${System.currentTimeMillis()}.jpg")
+
+        imageFile.outputStream().use { output ->
+            inputStream.copyTo(output)
+        }
+        return imageFile
     }
 
     private suspend fun uploadImage(uri: Uri): String = withContext(Dispatchers.IO) {

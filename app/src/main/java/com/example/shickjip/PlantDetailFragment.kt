@@ -5,14 +5,19 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
 import com.example.shickjip.databinding.FragmentPlantDetailBinding
+import com.example.shickjip.models.DiaryComment
 import com.example.shickjip.models.Plant
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,10 +55,14 @@ class PlantDetailFragment : Fragment() {
         }
 
         binding.writeDiaryButton.setOnClickListener {
-            activity?.supportFragmentManager?.beginTransaction()
-                ?.replace(R.id.viewPager, DiaryWritingFragment.newInstance(plantId))
-                ?.addToBackStack(null)
-                ?.commit()
+            // 현재 띄워져 있는 ViewPager를 감춤
+            (requireActivity() as HomeActivity).binding.viewPager.visibility = View.GONE
+
+            // DiaryWritingFragment로 전환
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, DiaryWritingFragment.newInstance(plantId))
+                .addToBackStack("diary_writing")  // 백스택에 이름을 지정하여 추가
+                .commit()
         }
     }
 
@@ -90,18 +99,89 @@ class PlantDetailFragment : Fragment() {
                 .load(plant.imagePath)
                 .into(plantImage)
 
-//            // 식물 일기가 있다면 업데이트
-//            diaryEntriesLayout.removeAllViews()
-//            plant.diaryEntries.forEach { entry ->
-//                // Add diary entry views
-//                val entryView = layoutInflater.inflate(R.layout.item_diary_entry, diaryEntriesLayout, false)
-//                entryView.findViewById<TextView>(R.id.entryContent).text = entry.content
-//                entryView.findViewById<TextView>(R.id.entryDate).text =
-//                    SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date(entry.date))
-//
-//                diaryEntriesLayout.addView(entryView)
-//            }
+            // 일기 목록 및 댓글 표시
+            diaryEntriesLayout.removeAllViews()
+            plant.diaryEntries.forEach { entry ->
+                val entryView = layoutInflater.inflate(R.layout.item_diary_entry, diaryEntriesLayout, false)
+
+                // 일기 내용 설정
+                entryView.findViewById<TextView>(R.id.entryContent).text = entry.content
+                entryView.findViewById<TextView>(R.id.entryDate).text =
+                    SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date(entry.date))
+
+                // 이미지가 있다면 표시
+                if (entry.imagePath != null) {
+                    val imageView = entryView.findViewById<ImageView>(R.id.diaryImage)
+                    imageView.visibility = View.VISIBLE
+                    Glide.with(requireContext())
+                        .load(entry.imagePath)
+                        .into(imageView)
+                }
+
+                // 댓글 입력 및 표시 설정
+                val commentInput = entryView.findViewById<EditText>(R.id.commentInput)
+                val sendButton = entryView.findViewById<ImageButton>(R.id.sendCommentButton)
+                val commentsContainer = entryView.findViewById<LinearLayout>(R.id.commentsContainer)
+
+                // 기존 댓글 표시
+                updateComments(commentsContainer, entry.comments)
+
+                // 댓글 전송 버튼 클릭 리스너
+                sendButton.setOnClickListener {
+                    val commentText = commentInput.text.toString()
+                    if (commentText.isNotEmpty()) {
+                        addComment(entry.id, commentText, commentsContainer)
+                        commentInput.text.clear()
+                    }
+                }
+
+                diaryEntriesLayout.addView(entryView)
+            }
         }
+    }
+    private fun updateComments(container: LinearLayout, comments: List<DiaryComment>) {
+        container.removeAllViews()
+        comments.forEach { comment ->
+            val commentView = layoutInflater.inflate(R.layout.item_comment, container, false)
+
+            commentView.findViewById<TextView>(R.id.userName).text = comment.userName
+            commentView.findViewById<TextView>(R.id.commentContent).text = comment.content
+            commentView.findViewById<TextView>(R.id.commentTime).text =
+                SimpleDateFormat("yyyy.MM.dd HH:mm", Locale.getDefault())
+                    .format(Date(comment.timestamp))
+
+            container.addView(commentView)
+        }
+    }
+
+    private fun addComment(diaryEntryId: String, content: String, container: LinearLayout) {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+
+        val comment = DiaryComment(
+            userId = currentUser.uid,
+            userName = currentUser.displayName ?: "Unknown",
+            content = content
+        )
+
+        // Firestore에 댓글 추가
+        firestore.collection("plants").document(plantId)
+            .get()
+            .addOnSuccessListener { document ->
+                val plant = document.toObject(Plant::class.java)
+                plant?.let {
+                    // 해당 일기 찾기 및 댓글 추가
+                    val diaryEntry = it.diaryEntries.find { entry -> entry.id == diaryEntryId }
+                    diaryEntry?.comments?.add(comment)
+
+                    // Firestore 업데이트
+                    firestore.collection("plants").document(plantId)
+                        .set(plant)
+                        .addOnSuccessListener {
+                            // 새 댓글 UI 추가
+                            updateComments(container, diaryEntry?.comments ?: listOf())
+                        }
+                }
+            }
     }
 
     override fun onDestroyView() {

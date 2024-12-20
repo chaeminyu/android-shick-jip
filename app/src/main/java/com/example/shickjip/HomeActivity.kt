@@ -17,6 +17,10 @@ class HomeActivity : AppCompatActivity() {
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // FragmentContainer가 항상 최상위에 오도록 설정
+        binding.fragmentContainer.elevation = 2f
+        binding.viewPager.elevation = 1f
+
         // ViewPager 설정
         val adapter = HomeBNVAdapter(this)
         binding.viewPager.adapter = adapter

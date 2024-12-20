@@ -1,5 +1,8 @@
 package com.example.shickjip.models
 
+import org.w3c.dom.Comment
+import java.util.UUID
+
 data class Plant(
     val id: String = "", // Firestore document ID
     val userId: String = "", // User who added this plant
@@ -12,8 +15,9 @@ data class Plant(
 )
 
 data class DiaryEntry(
-    val id: String = "", // Unique ID for the diary entry
-    val content: String = "", // Diary content
-    val imagePath: String? = null, // Optional additional image
-    val date: Long = System.currentTimeMillis() // Entry date
+    val id: String = "",
+    val content: String = "",
+    val imagePath: String? = null,
+    val date: Long = System.currentTimeMillis(),
+    val comments: MutableList<DiaryComment> = mutableListOf()  // DiaryComment로 변경
 )

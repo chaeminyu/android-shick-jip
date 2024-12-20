@@ -90,6 +90,7 @@ class ArchiveFragment : Fragment() {
         firestore.collection("plants")
             .whereEqualTo("userId", currentUser.uid)
             .orderBy("registrationDate", Query.Direction.DESCENDING)
+            // 이 부분이 인덱스가 필요한 복합 쿼리입니다
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.w("ArchiveFragment", "Listen failed.", e)
@@ -97,20 +98,15 @@ class ArchiveFragment : Fragment() {
                 }
 
                 if (snapshot != null && !snapshot.isEmpty) {
-                    Log.d("Firestore", "Fetched plants: ${snapshot.documents}")
                     plantsList.clear()
                     for (doc in snapshot.documents) {
-                        Log.d("Firestore", "Plant data: ${doc.data}")
                         doc.toObject(Plant::class.java)?.let { plant ->
                             plantsList.add(plant)
                         }
                     }
                     archiveAdapter.notifyDataSetChanged()
-                } else {
-                    Log.d("Firestore", "No plants found for user ${currentUser.uid}")
                 }
             }
-
     }
 
     override fun onDestroyView() {
