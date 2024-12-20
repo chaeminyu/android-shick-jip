@@ -90,8 +90,10 @@ class PlantDetailFragment : Fragment() {
 
     private fun updateUI(plant: Plant) {
         binding.apply {
-            // 식물의 common name이 있으면 사용하고, 없으면 학명 사용
-            val displayName = if (plant.name.contains(" (")) {
+            // 수정된 코드: nickname을 우선적으로 표시
+            val displayName = if (plant.nickname.isNotEmpty()) {
+                plant.nickname  // 닉네임 표시
+            } else if (plant.name.contains(" (")) {
                 plant.name.split(" (")[0]  // common name만 추출
             } else {
                 plant.name  // 학명만 있는 경우 그대로 사용
