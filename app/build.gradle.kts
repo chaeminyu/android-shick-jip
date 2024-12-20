@@ -47,6 +47,8 @@ android {
         jvmTarget = "1.8"
     }
 }
+// Google Services plugin 추가
+apply(plugin = "com.google.gms.google-services")
 
 dependencies {
 
@@ -64,6 +66,7 @@ dependencies {
     implementation(libs.firebase.appcheck.debug)
 
     implementation(libs.firebase.auth.ktx)
+    implementation(libs.firebase.firestore)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -88,6 +91,9 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
+
+    //로그인용
+    implementation("com.google.firebase:firebase-firestore:25.1.1")
     // 도감 날짜용
     implementation("com.github.bumptech.glide:glide:4.16.0")
     // 다이어리 작성
