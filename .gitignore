@@ -32,3 +32,5 @@ google-services.json
 
 # Android Profiling
 *.hprof
+app/shickzip-firebase-adminsdk-*.json
+
