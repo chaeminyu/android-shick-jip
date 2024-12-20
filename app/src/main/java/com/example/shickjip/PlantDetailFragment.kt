@@ -168,30 +168,37 @@ class PlantDetailFragment : Fragment() {
     private fun addComment(diaryEntryId: String, content: String, container: LinearLayout) {
         val currentUser = FirebaseAuth.getInstance().currentUser ?: return
 
-        val comment = DiaryComment(
-            userId = currentUser.uid,
-            userName = currentUser.displayName ?: "Unknown",
-            content = content
-        )
-
-        // Firestore에 댓글 추가
-        firestore.collection("plants").document(plantId)
+        // Firestore에서 현재 사용자의 username을 가져온 후 댓글 작성
+        firestore.collection("users").document(currentUser.uid)
             .get()
             .addOnSuccessListener { document ->
-                val plant = document.toObject(Plant::class.java)
-                plant?.let {
-                    // 해당 일기 찾기 및 댓글 추가
-                    val diaryEntry = it.diaryEntries.find { entry -> entry.id == diaryEntryId }
-                    diaryEntry?.comments?.add(comment)
+                val username = document.getString("username") ?: "Unknown"
 
-                    // Firestore 업데이트
-                    firestore.collection("plants").document(plantId)
-                        .set(plant)
-                        .addOnSuccessListener {
-                            // 새 댓글 UI 추가
-                            updateComments(container, diaryEntry?.comments ?: listOf())
+                val comment = DiaryComment(
+                    userId = currentUser.uid,
+                    userName = username,
+                    content = content
+                )
+
+                // 기존의 댓글 추가 로직
+                firestore.collection("plants").document(plantId)
+                    .get()
+                    .addOnSuccessListener { plantDoc ->
+                        val plant = plantDoc.toObject(Plant::class.java)
+                        plant?.let {
+                            val diaryEntry = it.diaryEntries.find { entry -> entry.id == diaryEntryId }
+                            diaryEntry?.comments?.add(comment)
+
+                            firestore.collection("plants").document(plantId)
+                                .set(plant)
+                                .addOnSuccessListener {
+                                    updateComments(container, diaryEntry?.comments ?: listOf())
+                                }
                         }
-                }
+                    }
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(context, "사용자 정보를 가져오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
     }
 
