@@ -2,28 +2,21 @@ package com.example.shickjip
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
-import android.text.style.StyleSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
-import android.view.animation.CycleInterpolator
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
-import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.FragmentHomeBinding
 import me.relex.circleindicator.CircleIndicator3
 

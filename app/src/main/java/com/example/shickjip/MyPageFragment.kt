@@ -64,15 +64,11 @@ class MyPageFragment : Fragment() {
             (activity as? HomeActivity)?.binding?.viewPager?.currentItem = 1  // HomeFragment의 인덱스
         }
 
-        // 샵으로 버튼
-//        binding.shopButton.setOnClickListener {
-//            // ShopFragment로 이동하는 코드
-//            val shopFragment = ShopFragment()
-//            parentFragmentManager.beginTransaction()
-//                .replace(R.id.fragmentContainer, shopFragment)
-//                .addToBackStack(null)
-//                .commit()
-//        }
+        // 샵으로 이동하는 버튼 클릭 리스너
+        binding.shopButton.setOnClickListener {
+            (activity as? HomeActivity)?.showShopFragment()
+        }
+
 
         // 회원 수정 버튼
         binding.editProfileButton.setOnClickListener {
