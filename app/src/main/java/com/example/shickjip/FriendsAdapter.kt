@@ -30,9 +30,8 @@ class FriendsAdapter(
         holder.name.text = friend.name
 
         Glide.with(holder.itemView.context)
-            .load(friend.profileImage.takeIf { it.isNotEmpty() }) // URL이 비어 있지 않으면 로드
-            .placeholder(R.drawable.profile_placeholder) // 로딩 중 기본 이미지
-            .error(R.drawable.ic_profile_default) // 로드 실패 시 기본 이미지
+            .load(friend.profileImage.takeIf { it.isNotEmpty() } ?: R.drawable.ic_profile_default) // URL이 비어 있지 않으면 로드
+            .error(R.drawable.profile_placeholder) // 로드 실패 시 기본 이미지
             .into(holder.profileImage)
 
         holder.itemView.setOnClickListener {
