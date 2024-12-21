@@ -82,6 +82,15 @@ class ArchiveFragment : Fragment() {
             fragment.show(parentFragmentManager, "FriendAddFragment")
             Log.d("ArchiveFragment", "+ 버튼 클릭됨: 모달 표시")
         }
+
+        // 내 프로필 클릭 시 자신의 식물 로드
+        binding.btnProfilePicture.setOnClickListener {
+            loadPlants() // 내 프로필 클릭 시 자신의 데이터를 다시 로드
+            Log.d("ArchiveFragment", "내 프로필 클릭됨: 내 식물 데이터 로드")
+
+            // 친구 목록에서 선택된 배경 초기화
+            friendAdapter.resetSelection()
+        }
     }
 
     private fun setupPlantRecyclerView() {

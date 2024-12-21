@@ -42,18 +42,17 @@ class FriendsAdapter(
         if (position == selectedPosition) {
             holder.rootView.setBackgroundResource(R.drawable.friendprofile_selected_background) // 클릭된 항목 배경 변경
         } else {
-            // 아무 배경도 설정하지 않음 (비어있게 둠)
-            holder.rootView.background = null
+            holder.rootView.background = null // 클릭되지 않은 항목은 배경을 null로 설정
         }
 
         // 친구 클릭 시 배경 변경 및 클릭된 위치 업데이트
         holder.itemView.setOnClickListener {
             // 이전 선택된 항목의 배경을 기본값으로 변경
-            notifyItemChanged(selectedPosition)
-
-            // 클릭된 항목의 배경을 변경하고, 선택된 항목 업데이트
-            selectedPosition = position
-            notifyItemChanged(position)
+            if (selectedPosition != position) {
+                notifyItemChanged(selectedPosition) // 이전 선택된 항목 업데이트
+                selectedPosition = position // 클릭된 항목 업데이트
+                notifyItemChanged(selectedPosition) // 새로 클릭된 항목 업데이트
+            }
 
             // 클릭된 친구에 대한 추가 작업
             onFriendClick(friend)
@@ -67,5 +66,14 @@ class FriendsAdapter(
         friends.clear()
         friends.addAll(newFriends)
         notifyDataSetChanged() // RecyclerView 새로고침
+    }
+
+    // 선택된 항목 초기화
+    fun resetSelection() {
+        val prevSelectedPosition = selectedPosition
+        selectedPosition = -1 // 선택된 항목 초기화
+        if (prevSelectedPosition != -1) {
+            notifyItemChanged(prevSelectedPosition) // 이전 선택된 항목 초기화
+        }
     }
 }
