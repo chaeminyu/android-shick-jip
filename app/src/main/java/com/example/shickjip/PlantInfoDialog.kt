@@ -1,23 +1,19 @@
 package com.example.shickjip
 
 import android.app.Dialog
-import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.Window
 import android.widget.Toast
+import androidx.fragment.app.DialogFragment
 import com.bumptech.glide.Glide
 import com.example.shickjip.databinding.ItemInfomodalBinding
 import com.example.shickjip.models.Plant
-import com.google.firebase.appcheck.FirebaseAppCheck
-import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -25,68 +21,66 @@ import java.io.File
 import java.util.UUID
 
 class PlantInfoDialog(
-    context: Context,
     private val title: String,
     private val description: String,
     private val imageUri: Uri?,
     private val imagePath: String,
-    private val onSuccess: () -> Unit // Success callback으로 변경
-) : Dialog(context) {
+    private val onSuccess: () -> Unit // Success callback
+) : DialogFragment() {
 
-    private lateinit var binding: ItemInfomodalBinding
+    private var _binding: ItemInfomodalBinding? = null
+    private val binding get() = _binding!!
+
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private val storage = FirebaseStorage.getInstance()
+
     companion object {
         private const val PLANT_IMAGE_FOLDER = "plant_images"
     }
 
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = ItemInfomodalBinding.inflate(inflater, container, false)
+        return binding.root
+    }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        // Firebase App Check 초기화
-        val appCheck = FirebaseAppCheck.getInstance()
-        appCheck.installAppCheckProviderFactory(
-            DebugAppCheckProviderFactory.getInstance()
-        )
-        binding = ItemInfomodalBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
-        // 다이얼로그 스타일 설정
-        window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        window?.setLayout(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        binding.apply {
-            plantTitle.text = title
-            plantDescription.text = description
+        // 다이얼로그 크기 설정
+        dialog?.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
 
-            if (imageUri != null) {
-                Glide.with(context)
-                    .load(imageUri)
-                    .into(plantImage)
-            } else if (imagePath.isNotEmpty()) {
-                Glide.with(context)
-                    .load(File(imagePath))
-                    .into(plantImage)
-            }
+        // 다이얼로그 배경을 투명하게 설정
+        dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-            registerButton.setOnClickListener {
-                registerPlant()
-            }
 
-            closeButton.setOnClickListener {
-                dismiss()
-            }
+        // 기존 코드
+        binding.plantTitle.text = title
+
+        val normalizedDescription = description.replace("\n", " ")
+
+        val maxTotalLength = 400
+        val titleLength = title.length
+        val remainingLength = maxTotalLength - titleLength
+
+        val truncatedDescription = if (normalizedDescription.length > remainingLength) {
+            normalizedDescription.substring(0, remainingLength - 5) + "...더보기"
+        } else {
+            normalizedDescription
         }
 
-        // 텍스트 설정
-        binding.plantTitle.text = title
-        binding.plantDescription.text = description
+        binding.plantDescription.text = truncatedDescription
 
-        // 버튼 설정
+        if (imageUri != null) {
+            Glide.with(requireContext()).load(imageUri).into(binding.plantImage)
+        } else if (imagePath.isNotEmpty()) {
+            Glide.with(requireContext()).load(File(imagePath)).into(binding.plantImage)
+        }
+
         binding.registerButton.setOnClickListener {
             registerPlant()
         }
@@ -94,11 +88,11 @@ class PlantInfoDialog(
         binding.closeButton.setOnClickListener {
             dismiss()
         }
-
     }
+
     private fun registerPlant() {
         val currentUser = auth.currentUser ?: run {
-            Toast.makeText(context, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -110,7 +104,6 @@ class PlantInfoDialog(
         binding.registerButton.isEnabled = false
 
         try {
-            // 이미지를 내부 저장소에 저장
             val file = saveImageToInternalStorage(imageUri)
             saveToFirestore(currentUser.uid, file.absolutePath)
         } catch (e: Exception) {
@@ -120,9 +113,9 @@ class PlantInfoDialog(
     }
 
     private fun saveImageToInternalStorage(imageUri: Uri): File {
-        val contextResolver = context.contentResolver
+        val contextResolver = requireContext().contentResolver
         val inputStream = contextResolver.openInputStream(imageUri) ?: throw Exception("이미지 스트림을 열 수 없습니다.")
-        val imageFile = File(context.filesDir, "Plant_${System.currentTimeMillis()}.jpg")
+        val imageFile = File(requireContext().filesDir, "Plant_${System.currentTimeMillis()}.jpg")
 
         imageFile.outputStream().use { output ->
             inputStream.copyTo(output)
@@ -145,8 +138,8 @@ class PlantInfoDialog(
             .document(plant.id)
             .set(plant)
             .addOnSuccessListener {
-                Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
-                onSuccess() // Success callback 호출
+                Toast.makeText(requireContext(), "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
+                onSuccess()
                 dismiss()
             }
             .addOnFailureListener { e ->
@@ -156,44 +149,13 @@ class PlantInfoDialog(
             }
     }
 
-
-
-//    private fun uploadImage(plantId: String, userId: String) {
-//        try {
-//            val storageRef = storage.reference
-//                .child("plant_images") // Root folder
-//                .child("${userId}_${plantId}.jpg") // Simplified path
-//
-//            val contentResolver = context.contentResolver
-//            imageUri?.let { uri ->
-//                val stream = contentResolver.openInputStream(uri)
-//                val bytes = stream?.readBytes()
-//                if (bytes != null) {
-//                    storageRef.putBytes(bytes)
-//                        .addOnSuccessListener {
-//                            handleSuccess()
-//                        }
-//                        .addOnFailureListener { e ->
-//                            Log.e("Storage", "Upload failed", e)
-//                            handleError("이미지 업로드 실패")
-//                        }
-//                }
-//            }
-//        } catch (e: Exception) {
-//            Log.e("Storage", "Error preparing upload", e)
-//            handleError("업로드 준비 실패")
-//        }
-//    }
-
-    private fun handleSuccess() {
-        Toast.makeText(context, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
-        onSuccess()
-        dismiss()
-    }
-
-
     private fun handleError(message: String) {
         binding.registerButton.isEnabled = true
-        Toast.makeText(context, "$message. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "$message. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }
