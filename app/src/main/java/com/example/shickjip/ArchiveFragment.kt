@@ -63,6 +63,7 @@ class ArchiveFragment : Fragment() {
                     if (snapshot != null && snapshot.exists()) {
                         val username = snapshot.getString("username") ?: "사용자"
                         binding.profileName.text = "${username}'s collection"
+                        binding.myName.text = username
                     }
                 }
         }
