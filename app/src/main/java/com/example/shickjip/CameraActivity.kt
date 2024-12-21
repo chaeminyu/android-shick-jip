@@ -67,7 +67,6 @@ class CameraActivity : AppCompatActivity() {
     private var isFlashOn = false // 플래시 상태를 추적
 
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityCameraBinding.inflate(layoutInflater)
@@ -77,16 +76,16 @@ class CameraActivity : AppCompatActivity() {
             val containerHeight = binding.containerLayout.height  // 부모 레이아웃 높이
 
             // 버튼 크기 설정
-            binding.flashButton.layoutParams.height = containerHeight * 2 /5
-            binding.flashButton.layoutParams.width = containerHeight * 2 /5
+            binding.flashButton.layoutParams.height = containerHeight * 2 / 5
+            binding.flashButton.layoutParams.width = containerHeight * 2 / 5
             binding.flashButton.requestLayout()
 
             binding.captureButton.layoutParams.height = containerHeight * 4 / 5
             binding.captureButton.layoutParams.width = containerHeight * 4 / 5
             binding.captureButton.requestLayout()
 
-            binding.switchCameraButton.layoutParams.height = containerHeight * 2 /5
-            binding.switchCameraButton.layoutParams.width = containerHeight * 2 /5
+            binding.switchCameraButton.layoutParams.height = containerHeight * 2 / 5
+            binding.switchCameraButton.layoutParams.width = containerHeight * 2 / 5
             binding.switchCameraButton.requestLayout()
         }
 
@@ -150,7 +149,8 @@ class CameraActivity : AppCompatActivity() {
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
-            baseContext, it) == PackageManager.PERMISSION_GRANTED
+            baseContext, it
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onRequestPermissionsResult(
@@ -180,7 +180,12 @@ class CameraActivity : AppCompatActivity() {
 
         val photoFile = File(
             getOutputDirectory(),
-            "Plant_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())}.jpg"
+            "Plant_${
+                SimpleDateFormat(
+                    "yyyyMMdd_HHmmss",
+                    Locale.US
+                ).format(System.currentTimeMillis())
+            }.jpg"
         )
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
@@ -212,12 +217,15 @@ class CameraActivity : AppCompatActivity() {
 
                 override fun onError(exc: ImageCaptureException) {
                     Log.e("CameraActivity", "사진 저장 실패", exc)
-                    Toast.makeText(this@CameraActivity, "사진 저장 실패: ${exc.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@CameraActivity,
+                        "사진 저장 실패: ${exc.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         )
     }
-
 
 
     private suspend fun translatePlantName(name: String, targetLang: String): String {
@@ -259,7 +267,11 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun translateDescriptionWithPlaceholder(description: String, plantName: String, targetLang: String): String {
+    private suspend fun translateDescriptionWithPlaceholder(
+        description: String,
+        plantName: String,
+        targetLang: String
+    ): String {
         // translatePlantName에서 학명을 추출
         val pattern = Pattern.compile("^(.*)\\((.*)\\)$")
         val matcher = pattern.matcher(plantName)
@@ -311,7 +323,8 @@ class CameraActivity : AppCompatActivity() {
 
             // 3. 요청 파일 생성
             val requestFile = RequestBody.create("image/*".toMediaTypeOrNull(), optimizedFile)
-            val imagePart = MultipartBody.Part.createFormData("images", optimizedFile.name, requestFile)
+            val imagePart =
+                MultipartBody.Part.createFormData("images", optimizedFile.name, requestFile)
             Log.d("Debug2", "MultipartBody created for image: ${optimizedFile.name}")
 
             // 4. API 호출
@@ -345,7 +358,8 @@ class CameraActivity : AppCompatActivity() {
                             val translatedTitle = translatePlantName(displayName, "KO")
                             Log.d("Debug2", "Translated title: $translatedTitle")
 
-                            val translatedDescription = translateDescriptionWithPlaceholder(description, displayName, "KO")
+                            val translatedDescription =
+                                translateDescriptionWithPlaceholder(description, displayName, "KO")
                             Log.d("Debug2", "Translated description: $translatedDescription")
 
                             // 식물 정보 모달을 표시하기 직전에 성공 모달을 닫음
@@ -384,7 +398,8 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun isNetworkAvailable(): Boolean {
-        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager =
+            getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkCapabilities = connectivityManager.activeNetwork ?: return false
         val actNw = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
         return actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
@@ -487,7 +502,10 @@ class CameraActivity : AppCompatActivity() {
         val bitmap = BitmapFactory.decodeFile(file.absolutePath) ?: return file
         return try {
             val exif = ExifInterface(file.absolutePath)
-            val orientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            val orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
             val rotationAngle = when (orientation) {
                 ExifInterface.ORIENTATION_ROTATE_90 -> 90f
                 ExifInterface.ORIENTATION_ROTATE_180 -> 180f
@@ -495,7 +513,8 @@ class CameraActivity : AppCompatActivity() {
                 else -> 0f
             }
             val matrix = Matrix().apply { postRotate(rotationAngle) }
-            val correctedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            val correctedBitmap =
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
             // 보정된 이미지 저장
             val correctedFile = File(file.parent, "corrected_${file.name}")
@@ -555,7 +574,11 @@ class CameraActivity : AppCompatActivity() {
                     }, 300) // 모달 숨김 애니메이션 시간 이후 실행
                 } catch (e: Exception) {
                     Log.e("Register", "Plant registration failed", e)
-                    Toast.makeText(this@CameraActivity, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@CameraActivity,
+                        "도감 등록 실패: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     binding.registerButton.isEnabled = true // 실패 시 버튼 활성화
                 }
             }
@@ -591,230 +614,248 @@ class CameraActivity : AppCompatActivity() {
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out) // 전환 애니메이션 설정
     }
 
-    private fun registerPlant(title: String, description: String, photoFile: File) {
+    private suspend fun registerPlant(title: String, description: String, photoFile: File) {
         val currentUser = FirebaseAuth.getInstance().currentUser ?: run {
             Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
-
-        val savedFile = saveImageToInternalStorage(photoFile)
-
-        saveToFirestore(currentUser.uid, savedFile.absolutePath, title, description)
-            .addOnSuccessListener {
-                Toast.makeText(this, "도감 등록 성공! 경험치 +10, 코인 +10", Toast.LENGTH_SHORT).show()
-                navigateToHome() // Firebase 작업 성공 시 홈으로 이동
-            }
-            .addOnFailureListener { e ->
-                Log.e("RegisterPlant", "도감 등록 실패", e)
-                Toast.makeText(this, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-    private fun saveImageToInternalStorage(photoFile: File): File {
-        val imageFile = File(filesDir, "Plant_${System.currentTimeMillis()}.jpg")
-        photoFile.inputStream().use { input ->
-            imageFile.outputStream().use { output ->
-                input.copyTo(output)
+        // Step 1: Firebase Storage에 이미지 업로드
+        val uploadedImageUrl = uploadImageToFirebaseStorage(photoFile)
+        if (uploadedImageUrl != null) {
+            // Step 2: Firestore에 데이터 저장
+            saveToFirestore(currentUser.uid, uploadedImageUrl, title, description)
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@CameraActivity, "이미지 업로드 실패", Toast.LENGTH_SHORT).show()
             }
         }
-        return imageFile
     }
 
-    private fun saveToFirestore(
+    private suspend fun uploadImageToFirebaseStorage(photoFile: File): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val storageRef = FirebaseStorage.getInstance().reference
+                val imageRef = storageRef.child("images/${photoFile.name}")
+
+                imageRef.putFile(Uri.fromFile(photoFile)).await()
+                Log.d("FirebaseStorage", "이미지 업로드 성공: ${photoFile.name}")
+
+                val downloadUrl = imageRef.downloadUrl.await().toString()
+                Log.d("FirebaseStorage", "다운로드 URL: $downloadUrl")
+                downloadUrl
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) {
+                    Log.w("FirebaseStorage", "이미지 업로드 작업이 취소되었습니다.", e)
+                } else {
+                    Log.e("FirebaseStorage", "이미지 업로드 실패", e)
+                }
+                null
+            }
+        }
+    }
+
+    private suspend fun saveToFirestore(
         userId: String,
-        filePath: String,
+        imagePath: String,
         title: String,
         description: String
-    ): Task<Void> {
-        val firestore = FirebaseFirestore.getInstance()
-        val plant = Plant(
-            id = UUID.randomUUID().toString(),
-            userId = userId,
-            name = title,
-            description = description,
-            imagePath = filePath,
-            captureDate = System.currentTimeMillis(),
-            registrationDate = System.currentTimeMillis()
-        )
-
-        val userRef = firestore.collection("users").document(userId)
-        val plantRef = firestore.collection("plants").document(plant.id)
-
-        return firestore.runTransaction { transaction ->
-            // 사용자 데이터 읽기
-            val snapshot = transaction.get(userRef)
-            val currentExperience = snapshot.getLong("experience") ?: 0
-            val currentCoins = snapshot.getLong("coins") ?: 0
-
-            // 경험치와 코인 증가
-            val updatedExperience = currentExperience + 15
-            val updatedCoins = currentCoins + 10
-
-            // 도감 데이터 저장 및 사용자 데이터 업데이트
-            transaction.set(plantRef, plant)
-            transaction.update(userRef, "experience", updatedExperience)
-            transaction.update(userRef, "coins", updatedCoins)
-
-            // 반환값을 명시적으로 Void로 설정
-            null as Void?
-        }
-    }
-
-    private fun handleError(message: String) {
-        Toast.makeText(this, "$message. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun showScanOverlay(state: ModalState) {
-        // 터치 차단 활성화 (카메라 화면 터치 차단)
-        binding.touchBlocker.visibility = View.VISIBLE
-
-
-        // 오버레이 표시
-        binding.modalOverlay.visibility = View.VISIBLE
-        updateScanOverlayState(state)
-        if (state == ModalState.LOADING) {
-            pauseCamera() // 로딩 상태에서 카메라 정지
-        }
-    }
-
-    private fun hideScanOverlay() {
-        // 모달 상태 초기화
-        resetModalState()
-        // 모달 숨김
-        binding.modalOverlay.visibility = View.GONE
-
-        // 터치 차단 해제
-        binding.touchBlocker.visibility = View.GONE
-    }
-
-    private fun updateScanOverlayState(state: ModalState) {
-        when (state) {
-            ModalState.LOADING -> {
-                // 로딩 상태 - 아이콘 회전 애니메이션
-                binding.modalBg.setImageResource(R.drawable.modal_bg_loading)
-                binding.modalIcon.setImageResource(R.drawable.ic_modal_loading)
-                binding.modalTitle.text = "로딩 중입니다..."
-                binding.modalMessage.text = "잠시만 기다려주세요!"
-
-                val rotationAnimator = ObjectAnimator.ofFloat(binding.modalIcon, "rotation", 0f, 360f).apply {
-                    duration = 2000
-                    repeatCount = ObjectAnimator.INFINITE
-                    repeatMode = ObjectAnimator.RESTART
-                }
-                rotationAnimator.start()
-                binding.modalIcon.tag = rotationAnimator // 애니메이션 참조 저장
-            }
-
-            ModalState.SUCCESS -> {
-                transitionFromLoadingToResult(
-                    resultBg = R.drawable.modal_bg_success,
-                    resultIcon = R.drawable.ic_modal_success,
-                    title = "식물을 찾았어요!",
-                    message = "이제 이 친구에 대해 알려드릴게요!"
-                )
-            }
-
-            ModalState.FAILURE -> {
-                transitionFromLoadingToResult(
-                    resultBg = R.drawable.modal_bg_failure,
-                    resultIcon = R.drawable.ic_modal_failure,
-                    title = "식물을 찾지 못했어요...",
-                    message = "다시 한 번 촬영해볼까요?"
-                )
-
-                // 실패 상태도 일정 시간 후 자동 닫기
-                Handler(Looper.getMainLooper()).postDelayed({
-                    hideScanOverlay()
-                    resumeCamera() // 실패 후 카메라 재시작
-                }, 2500) // 2.5초 유지
-            }
-        }
-    }
-
-    private fun transitionFromLoadingToResult(
-        resultBg: Int,
-        resultIcon: Int,
-        title: String,
-        message: String
     ) {
-        // 1. 로딩 아이콘 숨기기
-        binding.modalIcon.visibility = View.GONE
-        binding.modalIconResult.apply {
-            visibility = View.VISIBLE
-            setImageResource(resultIcon)
-            scaleX = 0f
-            scaleY = 0f
-            alpha = 0f
-        }
+        withContext(Dispatchers.IO) {
+            try {
+                val firestore = FirebaseFirestore.getInstance()
+                val plant = Plant(
+                    id = UUID.randomUUID().toString(),
+                    userId = userId,
+                    name = title,
+                    description = description,
+                    imagePath = imagePath,
+                    captureDate = System.currentTimeMillis(),
+                    registrationDate = System.currentTimeMillis()
+                )
 
-        // 2. 텍스트 설정
-        binding.modalTitle.text = title
-        binding.modalMessage.text = message
-        binding.modalTitle.alpha = 0f
-        binding.modalMessage.alpha = 0f
+                val userRef = firestore.collection("users").document(userId)
+                val plantRef = firestore.collection("plants").document(plant.id)
 
-        // 3. 배경 업데이트
-        binding.modalBg.setImageResource(resultBg)
+                firestore.runTransaction { transaction ->
+                    val snapshot = transaction.get(userRef)
+                    val currentExperience = snapshot.getLong("experience") ?: 0
+                    val currentCoins = snapshot.getLong("coins") ?: 0
 
-        // 4. 결과 애니메이션
-        val iconExpandAnimator = AnimatorSet().apply {
-            playTogether(
-                ObjectAnimator.ofFloat(binding.modalIconResult, "scaleX", 0f, 1f),
-                ObjectAnimator.ofFloat(binding.modalIconResult, "scaleY", 0f, 1f),
-                ObjectAnimator.ofFloat(binding.modalIconResult, "alpha", 0f, 1f)
-            )
-            duration = 500
-        }
+                    val updatedExperience = currentExperience + 15
+                    val updatedCoins = currentCoins + 10
 
-        val fadeInTextAnimator = AnimatorSet().apply {
-            playTogether(
-                ObjectAnimator.ofFloat(binding.modalTitle, "alpha", 0f, 1f),
-                ObjectAnimator.ofFloat(binding.modalMessage, "alpha", 0f, 1f)
-            )
-            duration = 500
-        }
-
-        AnimatorSet().apply {
-            playSequentially(iconExpandAnimator, fadeInTextAnimator)
-            start()
-        }.doOnEnd {
-            closeOverlayAfterDelay() // 결과 애니메이션 종료 후 자동 닫기
-        }
-    }
-
-    private fun AnimatorSet.doOnEnd(action: () -> Unit) {
-        addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: Animator) {
-                action()
-                removeListener(this)
+                    transaction.set(plantRef, plant)
+                    transaction.update(userRef, "experience", updatedExperience)
+                    transaction.update(userRef, "coins", updatedCoins)
+                }.await()
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) {
+                    Log.w("Firestore", "Firestore 작업이 취소되었습니다.", e)
+                } else {
+                    Log.e("Firestore", "Firestore 저장 실패", e)
+                }
+                throw e // 상위 호출에서 처리
             }
-        })
+        }
     }
 
-    private fun resetModalState() {
-        // 결과 아이콘 숨기기 및 초기화
-        binding.modalIconResult.apply {
-            visibility = View.GONE
-            scaleX = 1f
-            scaleY = 1f
-            alpha = 1f
+        private fun handleError(message: String) {
+            Toast.makeText(this, "$message. 다시 시도해주세요.", Toast.LENGTH_SHORT).show()
         }
 
-        // 로딩 아이콘 다시 활성화
-        binding.modalIcon.apply {
-            visibility = View.VISIBLE
-            rotation = 0f // 로딩 아이콘 회전 초기화
+        private fun showScanOverlay(state: ModalState) {
+            // 터치 차단 활성화 (카메라 화면 터치 차단)
+            binding.touchBlocker.visibility = View.VISIBLE
+
+
+            // 오버레이 표시
+            binding.modalOverlay.visibility = View.VISIBLE
+            updateScanOverlayState(state)
+            if (state == ModalState.LOADING) {
+                pauseCamera() // 로딩 상태에서 카메라 정지
+            }
         }
 
-        // 텍스트 초기화
-        binding.modalTitle.text = ""
-        binding.modalMessage.text = ""
-    }
+        private fun hideScanOverlay() {
+            // 모달 상태 초기화
+            resetModalState()
+            // 모달 숨김
+            binding.modalOverlay.visibility = View.GONE
+
+            // 터치 차단 해제
+            binding.touchBlocker.visibility = View.GONE
+        }
+
+        private fun updateScanOverlayState(state: ModalState) {
+            when (state) {
+                ModalState.LOADING -> {
+                    // 로딩 상태 - 아이콘 회전 애니메이션
+                    binding.modalBg.setImageResource(R.drawable.modal_bg_loading)
+                    binding.modalIcon.setImageResource(R.drawable.ic_modal_loading)
+                    binding.modalTitle.text = "로딩 중입니다..."
+                    binding.modalMessage.text = "잠시만 기다려주세요!"
+
+                    val rotationAnimator =
+                        ObjectAnimator.ofFloat(binding.modalIcon, "rotation", 0f, 360f).apply {
+                            duration = 2000
+                            repeatCount = ObjectAnimator.INFINITE
+                            repeatMode = ObjectAnimator.RESTART
+                        }
+                    rotationAnimator.start()
+                    binding.modalIcon.tag = rotationAnimator // 애니메이션 참조 저장
+                }
+
+                ModalState.SUCCESS -> {
+                    transitionFromLoadingToResult(
+                        resultBg = R.drawable.modal_bg_success,
+                        resultIcon = R.drawable.ic_modal_success,
+                        title = "식물을 찾았어요!",
+                        message = "이제 이 친구에 대해 알려드릴게요!"
+                    )
+                }
+
+                ModalState.FAILURE -> {
+                    transitionFromLoadingToResult(
+                        resultBg = R.drawable.modal_bg_failure,
+                        resultIcon = R.drawable.ic_modal_failure,
+                        title = "식물을 찾지 못했어요...",
+                        message = "다시 한 번 촬영해볼까요?"
+                    )
+
+                    // 실패 상태도 일정 시간 후 자동 닫기
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        hideScanOverlay()
+                        resumeCamera() // 실패 후 카메라 재시작
+                    }, 2500) // 2.5초 유지
+                }
+            }
+        }
+
+        private fun transitionFromLoadingToResult(
+            resultBg: Int,
+            resultIcon: Int,
+            title: String,
+            message: String
+        ) {
+            // 1. 로딩 아이콘 숨기기
+            binding.modalIcon.visibility = View.GONE
+            binding.modalIconResult.apply {
+                visibility = View.VISIBLE
+                setImageResource(resultIcon)
+                scaleX = 0f
+                scaleY = 0f
+                alpha = 0f
+            }
+
+            // 2. 텍스트 설정
+            binding.modalTitle.text = title
+            binding.modalMessage.text = message
+            binding.modalTitle.alpha = 0f
+            binding.modalMessage.alpha = 0f
+
+            // 3. 배경 업데이트
+            binding.modalBg.setImageResource(resultBg)
+
+            // 4. 결과 애니메이션
+            val iconExpandAnimator = AnimatorSet().apply {
+                playTogether(
+                    ObjectAnimator.ofFloat(binding.modalIconResult, "scaleX", 0f, 1f),
+                    ObjectAnimator.ofFloat(binding.modalIconResult, "scaleY", 0f, 1f),
+                    ObjectAnimator.ofFloat(binding.modalIconResult, "alpha", 0f, 1f)
+                )
+                duration = 500
+            }
+
+            val fadeInTextAnimator = AnimatorSet().apply {
+                playTogether(
+                    ObjectAnimator.ofFloat(binding.modalTitle, "alpha", 0f, 1f),
+                    ObjectAnimator.ofFloat(binding.modalMessage, "alpha", 0f, 1f)
+                )
+                duration = 500
+            }
+
+            AnimatorSet().apply {
+                playSequentially(iconExpandAnimator, fadeInTextAnimator)
+                start()
+            }.doOnEnd {
+                closeOverlayAfterDelay() // 결과 애니메이션 종료 후 자동 닫기
+            }
+        }
+
+        private fun AnimatorSet.doOnEnd(action: () -> Unit) {
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    action()
+                    removeListener(this)
+                }
+            })
+        }
+
+        private fun resetModalState() {
+            // 결과 아이콘 숨기기 및 초기화
+            binding.modalIconResult.apply {
+                visibility = View.GONE
+                scaleX = 1f
+                scaleY = 1f
+                alpha = 1f
+            }
+
+            // 로딩 아이콘 다시 활성화
+            binding.modalIcon.apply {
+                visibility = View.VISIBLE
+                rotation = 0f // 로딩 아이콘 회전 초기화
+            }
+
+            // 텍스트 초기화
+            binding.modalTitle.text = ""
+            binding.modalMessage.text = ""
+        }
 
 
-    private fun closeOverlayAfterDelay() {
-        Handler(Looper.getMainLooper()).postDelayed({
-            resetModalState() // 모달 상태 초기화
-            binding.modalOverlay.visibility = View.GONE // 모달 숨기기
-        }, 2500) // 2.5초 후 실행
+        private fun closeOverlayAfterDelay() {
+            Handler(Looper.getMainLooper()).postDelayed({
+                resetModalState() // 모달 상태 초기화
+                binding.modalOverlay.visibility = View.GONE // 모달 숨기기
+            }, 2500) // 2.5초 후 실행
+        }
     }
-}

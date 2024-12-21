@@ -195,8 +195,13 @@ class PlantDetailFragment : Fragment() {
                 binding.plantName.text = newNickname
                 Toast.makeText(requireContext(), "닉네임이 저장되었습니다!", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener {
-                Toast.makeText(requireContext(), "닉네임 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            .addOnFailureListener { exception ->
+                // 권한 문제인지 확인
+                if (exception is FirebaseFirestoreException && exception.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
+                    Toast.makeText(requireContext(), "친구의 닉네임을 변경할 권한이 없습니다.", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "닉네임 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                }
             }
     }
     private fun updateComments(container: LinearLayout, comments: List<DiaryComment>) {
