@@ -171,6 +171,7 @@ class ArchiveFragment : Fragment() {
                 for (document in result) {
                     val friend = document.toObject(Friend::class.java).apply {
                         name = document.getString("username") ?: "Unknown User" // username 추가
+                        userId = document.id // Firestore 문서 ID를 userid로 사용
                     }
                     friendsList.add(friend)
                 }
