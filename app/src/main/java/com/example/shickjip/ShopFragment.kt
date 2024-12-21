@@ -11,15 +11,20 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.shickjip.databinding.FragmentShopBinding
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class ShopFragment : Fragment() {
 
     private var _binding: FragmentShopBinding? = null
     private val binding get() = _binding!!
 
+    private val firestore = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+
+
     // SharedPreferences 키
     private val PREFS_NAME = "user_prefs"
-    private val KEY_USER_COIN = "user_coin"
     private val KEY_PURCHASED_THEMES = "purchased_themes"
 
     // 특별 테마 설정
@@ -71,6 +76,8 @@ class ShopFragment : Fragment() {
     )
 
     private lateinit var adapter: ThemeAdapter
+    private var userCoins: Int = 0 // 코인 저장 변수 (전역 변수로 선언)
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -83,9 +90,8 @@ class ShopFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 저장된 코인 불러오기
-        val currentCoins = getUserCoins()
-        binding.userCoin.text = currentCoins.toString()
+        // 코인 불러오기
+        loadUserCoins()
 
         // 결제된 상품 불러오기
         val purchasedThemes = getPurchasedThemes()
@@ -138,10 +144,9 @@ class ShopFragment : Fragment() {
     }
 
     private fun showPaymentDialog(themeItem: ThemeItem) {
-        val currentCoins = getUserCoins()
         val price = themeItem.price
 
-        val paymentDialog = PaymentDialog(currentCoins, price) {
+        val paymentDialog = PaymentDialog(userCoins, price) {
             processPayment(price, themeItem)
         }
 
@@ -149,22 +154,52 @@ class ShopFragment : Fragment() {
     }
 
     private fun processPayment(price: Int, themeItem: ThemeItem) {
-        val currentBalance = getUserCoins()
-        if (currentBalance >= price) {
-            val newBalance = currentBalance - price
-            saveUserCoins(newBalance)
-            savePurchasedTheme(themeItem.id) // ID로 저장
-            themeItem.isPurchased = true // 결제 상태 업데이트
-            binding.userCoin.text = newBalance.toString()
+        if (userCoins >= price) {
+            val newBalance = userCoins - price
+            updateUserCoins(newBalance) // Firebase로 업데이트
+            savePurchasedTheme(themeItem.id) // 구매 정보는 SharedPreferences에 저장
+            themeItem.isPurchased = true
             Toast.makeText(requireContext(), "결제가 완료되었습니다!", Toast.LENGTH_SHORT).show()
 
-            // RecyclerView 새로고침
             adapter.notifyDataSetChanged()
             updateSpecialThemeButton()
         } else {
             Toast.makeText(requireContext(), "코인이 부족합니다.", Toast.LENGTH_SHORT).show()
         }
     }
+
+    private fun loadUserCoins() {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            val userRef = firestore.collection("users").document(currentUser.uid)
+            userRef.get()
+                .addOnSuccessListener { document ->
+                    userCoins = document.getLong("coins")?.toInt() ?: 0 // 기본 값 설정
+                    binding.userCoin.text = userCoins.toString()
+                }
+                .addOnFailureListener {
+                    Toast.makeText(requireContext(), "코인 데이터를 가져올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+        } else {
+            Toast.makeText(requireContext(), "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateUserCoins(newCoins: Int) {
+        val currentUser = auth.currentUser
+        if (currentUser != null) {
+            val userRef = firestore.collection("users").document(currentUser.uid)
+            userRef.update("coins", newCoins)
+                .addOnSuccessListener {
+                    userCoins = newCoins
+                    binding.userCoin.text = userCoins.toString()
+                }
+                .addOnFailureListener {
+                    Toast.makeText(requireContext(), "코인 업데이트 실패", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+
 
     private fun applyTheme(themeItem: ThemeItem) {
         Toast.makeText(requireContext(), "${themeItem.title}가 적용되었습니다!", Toast.LENGTH_SHORT).show()
@@ -178,16 +213,6 @@ class ShopFragment : Fragment() {
         basicThemes.forEach { theme ->
             theme.isPurchased = purchasedThemes.contains(theme.id)
         }
-    }
-
-    private fun getUserCoins(): Int {
-        val sharedPrefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return sharedPrefs.getInt(KEY_USER_COIN, 3000)
-    }
-
-    private fun saveUserCoins(coins: Int) {
-        val sharedPrefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        sharedPrefs.edit().putInt(KEY_USER_COIN, coins).apply()
     }
 
     private fun savePurchasedTheme(themeId: String) {

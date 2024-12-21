@@ -1,5 +1,6 @@
 package com.example.shickjip
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -20,6 +21,8 @@ import com.example.shickjip.models.DiaryComment
 import com.example.shickjip.models.Plant
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.ListenerRegistration
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -73,52 +76,64 @@ class PlantDetailFragment : Fragment() {
 
     private fun setupViews() {
         binding.backButton.setOnClickListener {
-            activity?.supportFragmentManager?.popBackStack() // Fragment를 BackStack에서 제거
+            // 뒤로가기 시 ViewPager 표시
+            (requireActivity() as HomeActivity).binding.viewPager.visibility = View.VISIBLE
+            parentFragmentManager.popBackStack()
         }
 
         binding.writeDiaryButton.setOnClickListener {
-            // 현재 띄워져 있는 ViewPager를 감춤
-            (requireActivity() as HomeActivity).binding.viewPager.visibility = View.GONE
-
-            // DiaryWritingFragment로 전환
+            // 일기 작성 페이지로 이동
             parentFragmentManager.beginTransaction()
                 .replace(R.id.shopFragmentContainer, DiaryWritingFragment.newInstance(plantId))
-                .addToBackStack("diary_writing")  // 백스택에 이름을 지정하여 추가
+                .addToBackStack(null)
                 .commit()
         }
     }
 
+    private var snapshotListener: ListenerRegistration? = null
 
     private fun loadPlantDetails() {
         firestore.collection("plants").document(plantId)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.e("PlantDetailFragment", "Error fetching plant details", e)
-                    Toast.makeText(context, "데이터를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    if (isAdded) {
+                        Toast.makeText(context, "데이터를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
                     return@addSnapshotListener
                 }
 
                 if (snapshot != null && snapshot.exists()) {
                     snapshot.toObject(Plant::class.java)?.let { plant ->
                         this.plant = plant
-                        updateUI(plant)
+                        if (isAdded && binding != null) { // Fragment가 아직 활성 상태인지 확인
+                            updateUI(plant)
+                        } else {
+                            Log.w("PlantDetailFragment", "Fragment is not attached or binding is null")
+                        }
                     }
                 } else {
-                    Toast.makeText(context, "해당 식물을 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    if (isAdded) {
+                        Toast.makeText(context, "해당 식물을 찾을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
-
     }
 
+
     private fun updateUI(plant: Plant) {
+        if (!isAdded || binding == null) {
+            Log.w("PlantDetailFragment", "Fragment is not added or binding is null, skipping UI update")
+            return
+        }
+
         binding.apply {
-            // 수정된 코드: nickname을 우선적으로 표시
             val displayName = if (plant.nickname.isNotEmpty()) {
-                plant.nickname  // 닉네임 표시
+                plant.nickname
             } else if (plant.name.contains(" (")) {
-                plant.name.split(" (")[0]  // common name만 추출
+                plant.name.split(" (")[0]
             } else {
-                plant.name  // 학명만 있는 경우 그대로 사용
+                plant.name
             }
 
             plantName.text = displayName
@@ -126,7 +141,6 @@ class PlantDetailFragment : Fragment() {
             registrationDate.text = SimpleDateFormat("yyyy년 MM월 dd일 등록", Locale.getDefault())
                 .format(Date(plant.registrationDate))
 
-            // 이미지 로딩
             if (plant.imagePath.isNotEmpty()) {
                 Glide.with(requireContext())
                     .load(plant.imagePath)
@@ -134,17 +148,13 @@ class PlantDetailFragment : Fragment() {
                     .into(plantImage)
             }
 
-            // 일기 목록 및 댓글 표시
             diaryEntriesLayout.removeAllViews()
             plant.diaryEntries.forEach { entry ->
                 val entryView = layoutInflater.inflate(R.layout.item_diary_entry, diaryEntriesLayout, false)
-
-                // 일기 내용 설정
                 entryView.findViewById<TextView>(R.id.entryContent).text = entry.content
                 entryView.findViewById<TextView>(R.id.entryDate).text =
                     SimpleDateFormat("yyyy.MM.dd", Locale.getDefault()).format(Date(entry.date))
 
-                // 이미지가 있다면 표시
                 if (entry.imagePath != null) {
                     val imageView = entryView.findViewById<ImageView>(R.id.diaryImage)
                     imageView.visibility = View.VISIBLE
@@ -153,15 +163,12 @@ class PlantDetailFragment : Fragment() {
                         .into(imageView)
                 }
 
-                // 댓글 입력 및 표시 설정
                 val commentInput = entryView.findViewById<EditText>(R.id.commentInput)
                 val sendButton = entryView.findViewById<ImageButton>(R.id.sendCommentButton)
                 val commentsContainer = entryView.findViewById<LinearLayout>(R.id.commentsContainer)
 
-                // 기존 댓글 표시
                 updateComments(commentsContainer, entry.comments)
 
-                // 댓글 전송 버튼 클릭 리스너
                 sendButton.setOnClickListener {
                     val commentText = commentInput.text.toString()
                     if (commentText.isNotEmpty()) {
@@ -174,13 +181,18 @@ class PlantDetailFragment : Fragment() {
             }
         }
     }
+
     private fun updateNickname(plantId: String, newNickname: String) {
+        // Firebase 참조 가져오기
+        val firestore = FirebaseFirestore.getInstance()
+
         firestore.collection("plants").document(plantId)
             .update("nickname", newNickname)
             .addOnSuccessListener {
-                binding.nicknameEditText.visibility = View.GONE // EditText 숨김
-                binding.saveNicknameButton.visibility = View.GONE // 저장 버튼 숨김
-                binding.editNicknameButton.visibility = View.VISIBLE // 변경 버튼 다시 표시
+                binding.nicknameEditText.visibility = View.GONE
+                binding.saveNicknameButton.visibility = View.GONE
+                binding.editNicknameButton.visibility = View.VISIBLE
+                binding.plantName.text = newNickname
                 Toast.makeText(requireContext(), "닉네임이 저장되었습니다!", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener {
@@ -226,25 +238,56 @@ class PlantDetailFragment : Fragment() {
                             val diaryEntry = it.diaryEntries.find { entry -> entry.id == diaryEntryId }
                             diaryEntry?.comments?.add(comment)
 
+                            // 댓글 Firestore에 저장
                             firestore.collection("plants").document(plantId)
                                 .set(plant)
                                 .addOnSuccessListener {
+                                    // 댓글 UI 업데이트
                                     updateComments(container, diaryEntry?.comments ?: listOf())
+
+                                    // 경험치 5 추가
+                                    val userRef = firestore.collection("users").document(currentUser.uid)
+                                    firestore.runTransaction { transaction ->
+                                        val snapshot = transaction.get(userRef)
+                                        val currentExperience = snapshot.getLong("experience") ?: 0
+                                        transaction.update(userRef, "experience", currentExperience + 5)
+                                    }.addOnSuccessListener {
+                                        Toast.makeText(
+                                            context,
+                                            "댓글 작성 완료! 경험치 +5 획득!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }.addOnFailureListener { e ->
+                                        Log.e("PlantDetailFragment", "경험치 업데이트 실패", e)
+                                        Toast.makeText(
+                                            context,
+                                            "경험치 업데이트에 실패했습니다.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                         }
                     }
+                    .addOnFailureListener { e ->
+                        Log.e("PlantDetailFragment", "플랜트 데이터를 가져오는데 실패", e)
+                        Toast.makeText(context, "댓글 추가 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
             }
             .addOnFailureListener { e ->
+                Log.e("PlantDetailFragment", "사용자 정보를 가져오는데 실패", e)
                 Toast.makeText(context, "사용자 정보를 가져오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        snapshotListener?.remove()
+        snapshotListener = null
         requireActivity().findViewById<ViewPager2>(R.id.viewPager).visibility = View.VISIBLE
         requireActivity().findViewById<FrameLayout>(R.id.shopFragmentContainer).visibility = View.GONE
         _binding = null
     }
+
 
 
 

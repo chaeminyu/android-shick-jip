@@ -36,7 +36,7 @@ data class Plant(
 data class DiaryEntry(
     val id: String = "",
     val content: String = "",
-    val imagePath: String? = null,
+    var imagePath: String? = null,
     val date: Long = System.currentTimeMillis(),
     val comments: MutableList<DiaryComment> = mutableListOf(),  // DiaryComment로 변경
     val nickname: String = ""
