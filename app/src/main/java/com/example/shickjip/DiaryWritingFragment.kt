@@ -127,7 +127,8 @@ class DiaryWritingFragment : Fragment() {
                     id = UUID.randomUUID().toString(),
                     content = content,
                     imagePath = imagePath,
-                    date = System.currentTimeMillis()
+                    date = System.currentTimeMillis(),
+                    nickname = currentUser.displayName ?: "사용자"
                 )
 
                 // Firestore에 일기 추가

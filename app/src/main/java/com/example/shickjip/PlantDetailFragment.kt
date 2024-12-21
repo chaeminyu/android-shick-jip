@@ -47,6 +47,27 @@ class PlantDetailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupViews()
         loadPlantDetails()
+        setupListeners()
+    }
+    private fun setupListeners() {
+        // 닉네임 변경 버튼 클릭
+        binding.editNicknameButton.setOnClickListener {
+            binding.nicknameEditText.visibility = View.VISIBLE // EditText 표시
+            binding.saveNicknameButton.visibility = View.VISIBLE // 저장 버튼 표시
+            binding.editNicknameButton.visibility = View.GONE // 변경 버튼 숨김
+        }
+
+        // 닉네임 저장 버튼 클릭
+        binding.saveNicknameButton.setOnClickListener {
+            val newNickname = binding.nicknameEditText.text.toString().trim()
+            if (newNickname.isNotEmpty()) {
+                plantId?.let { id ->
+                    updateNickname(id, newNickname)
+                }
+            } else {
+                Toast.makeText(requireContext(), "닉네임을 입력해주세요.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupViews() {
@@ -90,8 +111,10 @@ class PlantDetailFragment : Fragment() {
 
     private fun updateUI(plant: Plant) {
         binding.apply {
-            // 식물의 common name이 있으면 사용하고, 없으면 학명 사용
-            val displayName = if (plant.name.contains(" (")) {
+            // 수정된 코드: nickname을 우선적으로 표시
+            val displayName = if (plant.nickname.isNotEmpty()) {
+                plant.nickname  // 닉네임 표시
+            } else if (plant.name.contains(" (")) {
                 plant.name.split(" (")[0]  // common name만 추출
             } else {
                 plant.name  // 학명만 있는 경우 그대로 사용
@@ -149,6 +172,19 @@ class PlantDetailFragment : Fragment() {
                 diaryEntriesLayout.addView(entryView)
             }
         }
+    }
+    private fun updateNickname(plantId: String, newNickname: String) {
+        firestore.collection("plants").document(plantId)
+            .update("nickname", newNickname)
+            .addOnSuccessListener {
+                binding.nicknameEditText.visibility = View.GONE // EditText 숨김
+                binding.saveNicknameButton.visibility = View.GONE // 저장 버튼 숨김
+                binding.editNicknameButton.visibility = View.VISIBLE // 변경 버튼 다시 표시
+                Toast.makeText(requireContext(), "닉네임이 저장되었습니다!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(requireContext(), "닉네임 저장에 실패했습니다.", Toast.LENGTH_SHORT).show()
+            }
     }
     private fun updateComments(container: LinearLayout, comments: List<DiaryComment>) {
         container.removeAllViews()
