@@ -12,6 +12,7 @@
         android:id="@+id/friendsList"
         android:layout_width="match_parent"
         android:layout_height="60dp"
+        android:scrollbars="horizontal"
         android:background="@color/transparent"
         android:layout_marginTop="40dp"
         app:layout_constraintTop_toTopOf="parent"

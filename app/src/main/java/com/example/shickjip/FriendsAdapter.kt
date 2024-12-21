@@ -1,35 +1,51 @@
-package com.example.shickjip
-
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.shickjip.databinding.ItemFriendsRecyclerviewBinding
+import com.bumptech.glide.Glide
+import com.example.shickjip.R
+import com.example.shickjip.models.Friend
 
-class FriendsAdapter(private val friends: List<String>) :
-    RecyclerView.Adapter<FriendsAdapter.FriendsViewHolder>() {
+class FriendsAdapter(
+    private val friends: MutableList<Friend>, // Firestore 데이터
+    private val onFriendClick: (Friend) -> Unit // 클릭 이벤트 처리
+) : RecyclerView.Adapter<FriendsAdapter.FriendViewHolder>() {
 
-    // ViewHolder class to hold individual list item views
-    class FriendsViewHolder(val binding: ItemFriendsRecyclerviewBinding) : RecyclerView.ViewHolder(binding.root)
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FriendsViewHolder {
-        val binding = ItemFriendsRecyclerviewBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return FriendsViewHolder(binding)
+    // ViewHolder 정의
+    class FriendViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val profileImage: ImageView = view.findViewById(R.id.friendsProfile)
+        val name: TextView = view.findViewById(R.id.friendName)
     }
 
-    override fun onBindViewHolder(holder: FriendsViewHolder, position: Int) {
-        val binding = holder.binding
-        binding.friendsProfile.setImageResource(android.R.drawable.star_on)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FriendViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_friends_recyclerview, parent, false)
+        return FriendViewHolder(view)
+    }
 
-        when (friends[position]) {
-            "친구1" -> binding.friendsProfile.setImageResource(R.drawable.avatar_1)
-            "친구2" -> binding.friendsProfile.setImageResource(R.drawable.avatar_10)
-            "친구3" -> binding.friendsProfile.setImageResource(R.drawable.avatar_11)
-            "친구4" -> binding.friendsProfile.setImageResource(R.drawable.avatar_12)
-            "친구5" -> binding.friendsProfile.setImageResource(R.drawable.avatar_13)
-            "친구6" -> binding.friendsProfile.setImageResource(R.drawable.avatar_14)
-            "친구7" -> binding.friendsProfile.setImageResource(R.drawable.avatar_15)
+    override fun onBindViewHolder(holder: FriendViewHolder, position: Int) {
+        val friend = friends[position]
+        holder.name.text = friend.name
+
+        Glide.with(holder.itemView.context)
+            .load(friend.profileImage.takeIf { it.isNotEmpty() }) // URL이 비어 있지 않으면 로드
+            .placeholder(R.drawable.profile_placeholder) // 로딩 중 기본 이미지
+            .error(R.drawable.ic_profile_default) // 로드 실패 시 기본 이미지
+            .into(holder.profileImage)
+
+        holder.itemView.setOnClickListener {
+            onFriendClick(friend)
         }
     }
 
     override fun getItemCount(): Int = friends.size
+
+    // Firestore 데이터 업데이트
+    fun updateFriends(newFriends: List<Friend>) {
+        friends.clear()
+        friends.addAll(newFriends)
+        notifyDataSetChanged() // RecyclerView 새로고침
+    }
 }

@@ -1,5 +1,6 @@
 package com.example.shickjip
 
+import FriendsAdapter
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -15,9 +16,9 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.FragmentArchiveBinding
+import com.example.shickjip.models.Friend
 import com.example.shickjip.models.Plant
 import com.example.shickjip.ui.FriendAddFragment
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -28,8 +29,14 @@ class ArchiveFragment : Fragment() {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+
+    // 기존 기능: 식물 데이터
     private lateinit var archiveAdapter: ArchiveAdapter
     private val plantsList = mutableListOf<Plant>()
+
+    // 추가된 기능: 친구 데이터
+    private lateinit var friendAdapter: FriendsAdapter
+    private val friendsList = mutableListOf<Friend>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -39,13 +46,13 @@ class ArchiveFragment : Fragment() {
         _binding = FragmentArchiveBinding.inflate(inflater, container, false)
         return binding.root
     }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         // 현재 로그인된 사용자의 UID 가져오기
-        val currentUser = FirebaseAuth.getInstance().currentUser
+        val currentUser = auth.currentUser
 
-        // Firestore에서 사용자 정보 조회
         currentUser?.let { user ->
             firestore.collection("users")
                 .document(user.uid)
@@ -62,9 +69,15 @@ class ArchiveFragment : Fragment() {
                 }
         }
 
-        setupRecyclerView()
-        loadPlants()
+        // RecyclerView 초기화
+        setupPlantRecyclerView()
+        setupFriendRecyclerView()
 
+        // Firestore 데이터 로드
+        loadPlants()
+        loadFriends()
+
+        // 친구 추가 버튼 클릭 이벤트
         binding.addFriendButton.setOnClickListener {
             val fragment = FriendAddFragment()
             fragment.show(parentFragmentManager, "FriendAddFragment")
@@ -72,7 +85,7 @@ class ArchiveFragment : Fragment() {
         }
     }
 
-    private fun setupRecyclerView() {
+    private fun setupPlantRecyclerView() {
         archiveAdapter = ArchiveAdapter(plantsList) { plantId ->
             Log.d("ArchiveFragment", "Navigating to PlantDetailFragment with plantId: $plantId")
 
@@ -94,16 +107,14 @@ class ArchiveFragment : Fragment() {
         }
     }
 
-
-
-
-
-    //chatgpt 추천코드
-    private fun isNetworkAvailable(): Boolean {
-        val connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkCapabilities = connectivityManager.activeNetwork ?: return false
-        val actNw = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
-        return actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+    private fun setupFriendRecyclerView() {
+        friendAdapter = FriendsAdapter(friendsList) { friend ->
+            Toast.makeText(context, "Clicked: ${friend.name}", Toast.LENGTH_SHORT).show()
+        }
+        binding.friendsList.apply {
+            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+            adapter = friendAdapter
+        }
     }
 
     private fun loadPlants() {
@@ -112,7 +123,6 @@ class ArchiveFragment : Fragment() {
         firestore.collection("plants")
             .whereEqualTo("userId", currentUser.uid)
             .orderBy("registrationDate", Query.Direction.DESCENDING)
-            // 이 부분이 인덱스가 필요한 복합 쿼리입니다
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.w("ArchiveFragment", "Listen failed.", e)
@@ -129,6 +139,51 @@ class ArchiveFragment : Fragment() {
                     archiveAdapter.notifyDataSetChanged()
                 }
             }
+    }
+
+    private fun loadFriends() {
+        val currentUser = auth.currentUser ?: return
+
+        firestore.collection("users").document(currentUser.uid)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.w("ArchiveFragment", "Listen failed.", e)
+                    return@addSnapshotListener
+                }
+
+                val friendEmails = snapshot?.get("friends") as? List<String> ?: emptyList()
+                if (friendEmails.isEmpty()) {
+                    Log.d("ArchiveFragment", "No friends found.")
+                    return@addSnapshotListener
+                }
+
+                // 친구 상세 정보 가져오기
+                fetchFriendDetails(friendEmails)
+            }
+    }
+
+    private fun fetchFriendDetails(friendEmails: List<String>) {
+        firestore.collection("users")
+            .whereIn("email", friendEmails)
+            .get()
+            .addOnSuccessListener { result ->
+                friendsList.clear()
+                for (document in result) {
+                    val friend = document.toObject(Friend::class.java)
+                    friendsList.add(friend)
+                }
+                friendAdapter.notifyDataSetChanged()
+            }
+            .addOnFailureListener { e ->
+                Log.e("ArchiveFragment", "Error fetching friend details: ${e.message}")
+            }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkCapabilities = connectivityManager.activeNetwork ?: return false
+        val actNw = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
+        return actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 
     override fun onDestroyView() {

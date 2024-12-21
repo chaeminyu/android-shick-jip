@@ -1,6 +1,7 @@
 package com.example.shickjip.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,9 +13,9 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
 class FriendAddFragment : DialogFragment() {
+
     private var _binding: FragmentFriendAddBinding? = null
     private val binding get() = _binding!!
-
     private val firestore by lazy { FirebaseFirestore.getInstance() }
     private val currentUser by lazy { FirebaseAuth.getInstance().currentUser }
 
@@ -40,7 +41,7 @@ class FriendAddFragment : DialogFragment() {
             if (friendEmail.isNotBlank()) {
                 validateAndAddFriend(friendEmail)
             } else {
-                Toast.makeText(context, "Please enter an email address.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Please enter a valid email.", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -48,56 +49,6 @@ class FriendAddFragment : DialogFragment() {
         binding.btnCancel.setOnClickListener {
             dismiss()
         }
-    }
-
-    private fun validateAndAddFriend(friendEmail: String) {
-        val userEmail = currentUser?.email
-
-        if (currentUser == null || userEmail == null) {
-            Toast.makeText(context, "User not authenticated.", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        // Step 1: Firestore에서 friendEmail이 유효한 사용자인지 확인
-        firestore.collection("users")
-            .whereEqualTo("email", friendEmail)
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                if (querySnapshot.isEmpty) {
-                    Toast.makeText(context, "The email '$friendEmail' does not belong to a valid user.", Toast.LENGTH_SHORT).show()
-                } else {
-                    addFriendToFirestore(friendEmail)
-                }
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(context, "Error checking user: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun addFriendToFirestore(friendEmail: String) {
-        val userDocRef = firestore.collection("users").document(currentUser!!.uid)
-
-        firestore.runTransaction { transaction ->
-            val snapshot = transaction.get(userDocRef)
-            val friendsList = snapshot.get("friends") as? MutableList<String> ?: mutableListOf()
-
-            if (friendsList.contains(friendEmail)) {
-                throw Exception("Friend already added.")
-            }
-
-            friendsList.add(friendEmail)
-            transaction.update(userDocRef, "friends", friendsList)
-        }.addOnSuccessListener {
-            Toast.makeText(context, "Friend '$friendEmail' added successfully!", Toast.LENGTH_SHORT).show()
-            dismiss() // 모달 닫기
-        }.addOnFailureListener { e ->
-            Toast.makeText(context, "Failed to add friend: ${e.message}", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 
     override fun onStart() {
@@ -117,5 +68,55 @@ class FriendAddFragment : DialogFragment() {
             // 배경 설정
             setBackgroundDrawableResource(R.drawable.modal_background)
         }
+    }
+
+    private fun validateAndAddFriend(friendEmail: String) {
+        currentUser?.let { user ->
+            firestore.collection("users").whereEqualTo("email", friendEmail).get()
+                .addOnSuccessListener { querySnapshot ->
+                    if (querySnapshot.isEmpty) {
+                        Toast.makeText(context, "No user found with this email.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        addFriendToFirestore(friendEmail)
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Toast.makeText(context, "Error validating email: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+
+    private fun addFriendToFirestore(friendEmail: String) {
+        currentUser?.let { user ->
+            val userRef = firestore.collection("users").document(user.uid)
+
+            firestore.runTransaction { transaction ->
+                val snapshot = transaction.get(userRef)
+                val currentFriends = snapshot.get("friends") as? MutableList<String> ?: mutableListOf()
+
+                if (!currentFriends.contains(friendEmail)) {
+                    currentFriends.add(friendEmail)
+                    transaction.update(userRef, "friends", currentFriends)
+                } else {
+                    throw Exception("Friend already added.")
+                }
+            }.addOnSuccessListener {
+                Toast.makeText(context, "Friend added successfully!", Toast.LENGTH_SHORT).show()
+
+                // ArchiveFragment에서 친구 목록을 다시 로드하도록 설정
+                parentFragmentManager.setFragmentResult(
+                    "friendAdded",
+                    Bundle().apply { putString("newFriendEmail", friendEmail) }
+                )
+                dismiss()
+            }.addOnFailureListener { e ->
+                Toast.makeText(context, "Failed to add friend: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
     }
 }
