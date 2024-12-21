@@ -144,7 +144,40 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="#F9FCF9"
-            android:paddingVertical="18dp">
+            android:paddingBottom="18dp">
+
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintWidth_percent="0.24"
+                app:layout_constraintDimensionRatio="2.4:1">
+
+                <!-- 배경 역할의 View -->
+                <View
+                    android:id="@+id/themeBackground"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/round_background" />
+
+                <!-- 중앙 텍스트 -->
+                <TextView
+                    android:id="@+id/themeText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/pretendard_semibold"
+                    android:text="테마 해제"
+                    android:textColor="@color/green7"
+                    android:textSize="11dp"
+                    android:gravity="center"
+                    app:layout_constraintBottom_toBottomOf="@+id/themeBackground"
+                    app:layout_constraintEnd_toEndOf="@+id/themeBackground"
+                    app:layout_constraintStart_toStartOf="@+id/themeBackground"
+                    app:layout_constraintTop_toTopOf="@+id/themeBackground" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <TextView
                 android:id="@+id/textView"
@@ -152,6 +185,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/pretendard_semibold"
                 android:text="한정 특가 테마"
+                android:layout_marginTop="18dp"
                 android:textColor="@color/green8"
                 android:textSize="22dp"
                 app:layout_constraintEnd_toEndOf="parent"
