@@ -5,6 +5,7 @@
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
     <string name="nickname">{nickname}</string>
+    <string name="friendsName">{Friend Name}</string>
     <string name="official_name">{Official Name}</string>
     <string name="registration_date">{registration date}</string>
     <!-- TODO: Remove or change this placeholder text -->

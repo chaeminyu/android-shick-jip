@@ -74,7 +74,8 @@ class JoinActivity : AppCompatActivity() {
             "uid" to uid,
             "username" to username,
             "email" to email,
-            "coin" to 0
+            "coin" to 0,
+            "friends" to emptyList<String>() // 친구 목록을 빈 리스트로 초기화
         )
 
         // Firestore에 UID를 문서 ID로 사용하여 저장
