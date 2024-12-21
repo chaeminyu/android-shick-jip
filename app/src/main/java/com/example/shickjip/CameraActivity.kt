@@ -22,6 +22,8 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraControl
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -59,7 +61,10 @@ class CameraActivity : AppCompatActivity() {
     private var isCameraActive = false // 카메라 활성 상태 추적
     private var imageCapture: ImageCapture? = null
     private var lensFacing = CameraSelector.LENS_FACING_BACK
-    private var flashMode = ImageCapture.FLASH_MODE_OFF
+    private lateinit var cameraControl: CameraControl
+    private lateinit var cameraInfo: CameraInfo
+    private var isFlashOn = false // 플래시 상태를 추적
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,17 +127,14 @@ class CameraActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
 
     }
+
     private fun toggleFlash() {
-        flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
+        isFlashOn = !isFlashOn
+        if (isFlashOn) {
             binding.flashButton.setImageResource(R.drawable.ic_flash_on)
-            ImageCapture.FLASH_MODE_ON
         } else {
             binding.flashButton.setImageResource(R.drawable.ic_flash_off)
-            ImageCapture.FLASH_MODE_OFF
         }
-
-        // 캡쳐 설정 업데이트
-        imageCapture?.flashMode = flashMode
     }
 
     private fun toggleCamera() {
@@ -158,10 +160,8 @@ class CameraActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                Log.d("Debug2", "Camera permission granted")
                 startCamera()
             } else {
-                Log.d("Debug2", "Camera permission denied")
                 Toast.makeText(this, "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -175,38 +175,43 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun takePhoto() {
-        Log.d("Debug2", "takePhoto called")
-
         val imageCapture = imageCapture ?: return
 
         val photoFile = File(
             getOutputDirectory(),
             "Plant_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())}.jpg"
         )
-        Log.d("Debug2", "Photo file created: ${photoFile.absolutePath}")
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        // 플래시 사용 설정
+        if (isFlashOn && ::cameraControl.isInitialized) {
+            cameraControl.enableTorch(true) // 플래시 켜기
+        }
 
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    Log.d("Debug2", "Photo saved successfully: ${photoFile.absolutePath}")
+                    val savedUri = Uri.fromFile(photoFile)
+                    Log.d("CameraActivity", "사진 저장 성공: $savedUri")
 
-                    // 로딩 오버레이를 표시하고 API 호출 시작
-                    showScanOverlay(ModalState.LOADING) // 오버레이 로딩 상태 표시
+                    // 촬영 후 플래시 끄기
+                    if (isFlashOn && ::cameraControl.isInitialized) {
+                        cameraControl.enableTorch(false) // 플래시 끄기
+                    }
+
+                    // 로딩 모달 표시 및 식물 인식 시작
                     lifecycleScope.launch {
-                        Log.d("Debug2", "Launching identifyPlantWithApi")
+                        showScanOverlay(ModalState.LOADING)
                         identifyPlantWithApi(photoFile)
                     }
                 }
 
                 override fun onError(exc: ImageCaptureException) {
-                    Log.e("Debug2", "Photo capture failed: ${exc.message}", exc)
-
-                    // 실패 상태를 오버레이에 표시
-                    showScanOverlay(ModalState.FAILURE)
+                    Log.e("CameraActivity", "사진 저장 실패", exc)
+                    Toast.makeText(this@CameraActivity, "사진 저장 실패: ${exc.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -410,45 +415,39 @@ class CameraActivity : AppCompatActivity() {
 
     // 카메라 시작 메서드
     private fun startCamera() {
-        Log.d("Debug2", "startCamera called")
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
-            // cameraProvider 초기화
             cameraProvider = cameraProviderFuture.get()
-            Log.d("Debug2", "CameraProvider initialized")
 
-            // Preview 설정
             val preview = Preview.Builder()
                 .build()
                 .also {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
-            // ImageCapture 설정
             imageCapture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
-            Log.d("Debug2", "imageCapture initialized")
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
 
             try {
-                // 기존 카메라 바인딩 해제
                 cameraProvider.unbindAll()
-
-                // 새 카메라 바인딩
-                val cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(lensFacing)
-                    .build()
-                cameraProvider.bindToLifecycle(
+                val camera = cameraProvider.bindToLifecycle(
                     this,
                     cameraSelector,
                     preview,
                     imageCapture
                 )
-                isCameraActive = true
-                Log.d("Debug2", "Camera bound to lifecycle")
-            } catch (e: Exception) {
-                Log.e("Debug2", "Camera binding failed", e)
+
+                // CameraControl 및 CameraInfo 초기화
+                cameraControl = camera.cameraControl
+                cameraInfo = camera.cameraInfo
+
+            } catch (exc: Exception) {
+                Log.e("CameraActivity", "카메라 바인딩 실패", exc)
             }
         }, ContextCompat.getMainExecutor(this))
     }
