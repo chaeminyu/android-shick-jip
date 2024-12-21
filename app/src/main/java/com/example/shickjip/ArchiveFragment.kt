@@ -48,58 +48,35 @@ class ArchiveFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 현재 로그인된 사용자의 UID 가져오기
-        val currentUser = auth.currentUser
-
-        currentUser?.let { user ->
-            firestore.collection("users")
-                .document(user.uid)
-                .addSnapshotListener { snapshot, e ->
-                    if (e != null) {
-                        Log.w("ArchiveFragment", "Listen failed.", e)
-                        return@addSnapshotListener
-                    }
-
-                    if (snapshot != null && snapshot.exists()) {
-                        val username = snapshot.getString("username") ?: "사용자"
-                        binding.profileName.text = "${username}'s collection"
-                        binding.myName.text = username
-                    }
-                }
-        }
-
         // RecyclerView 초기화
         setupPlantRecyclerView()
         setupFriendRecyclerView()
 
+        // 사용자 정보 로드 및 UI 업데이트
+        loadUserInfo()
+
         // Firestore 데이터 로드
         loadPlants() // 기본적으로 본인의 데이터를 로드
-        loadFriends() // 친구 목록을 로드
+        loadFriends() // 친구 목록 로드
 
         // 친구 추가 버튼 클릭 이벤트
         binding.addFriendButton.setOnClickListener {
             val fragment = FriendAddFragment()
             fragment.show(parentFragmentManager, "FriendAddFragment")
-            Log.d("ArchiveFragment", "+ 버튼 클릭됨: 모달 표시")
+            Log.d("ArchiveFragment", "친구 추가 버튼 클릭됨: 모달 표시")
         }
 
-        // 내 프로필 클릭 시 자신의 식물 로드 및 배경 복원
+        // 내 프로필 클릭 이벤트
         binding.btnProfilePicture.setOnClickListener {
-            loadPlants() // 내 프로필 클릭 시 자신의 데이터를 다시 로드
-            Log.d("ArchiveFragment", "내 프로필 클릭됨: 내 식물 데이터 로드")
-
-            // 내 프로필 배경을 원래대로 복원
-            binding.btnProfilePicture.setBackgroundResource(R.drawable.myprofile_background)
-
-            // 친구 목록에서 선택된 배경 초기화
-            friendAdapter.resetSelection()
+            loadPlants() // 내 데이터 로드
+            updateProfileName("My Collection") // 프로필 이름 업데이트
+            friendAdapter.resetSelection() // 친구 선택 초기화
+            Log.d("ArchiveFragment", "내 프로필 클릭됨")
         }
     }
 
     private fun setupPlantRecyclerView() {
-        // 식물 RecyclerView 어댑터 설정
         archiveAdapter = ArchiveAdapter(plantsList) { plantId ->
-            Log.d("ArchiveFragment", "Navigating to PlantDetailFragment with plantId: $plantId")
             val detailFragment = PlantDetailFragment.newInstance(plantId)
             (activity as? HomeActivity)?.navigateToFragment(detailFragment)
         }
@@ -111,30 +88,47 @@ class ArchiveFragment : Fragment() {
     }
 
     private fun setupFriendRecyclerView() {
-        // 친구 RecyclerView 어댑터 설정
         friendAdapter = FriendsAdapter(friendsList) { friend ->
-            // 친구 프로필 클릭 시 해당 친구의 데이터를 로드하여 archiveList 업데이트
             loadFriendPlants(friend.userId)
-            Toast.makeText(context, "${friend.name}의 데이터를 불러옵니다.", Toast.LENGTH_SHORT).show()
-
-            // 내 프로필 배경을 null로 설정
-            binding.btnProfilePicture.setBackgroundResource(0)  // 배경을 null로 설정하여 기본 상태로 되돌리기
+            updateProfileName("${friend.name}'s Collection")
+            Log.d("ArchiveFragment", "${friend.name}의 데이터를 로드 중...")
         }
+
         binding.friendsList.apply {
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
             adapter = friendAdapter
         }
     }
 
+    private fun loadUserInfo() {
+        val currentUser = auth.currentUser ?: return
+        firestore.collection("users")
+            .document(currentUser.uid)
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.w("ArchiveFragment", "사용자 정보 로드 실패", e)
+                    return@addSnapshotListener
+                }
+
+                snapshot?.let {
+                    val username = it.getString("username") ?: "사용자"
+                    binding.myName.text = username
+                    updateProfileName("My Collection")
+                }
+            }
+    }
+
+    private fun updateProfileName(name: String) {
+        binding.profileName.text = name
+    }
+
     private fun updateArchiveList(plants: List<Plant>) {
-        // 가져온 식물 데이터를 RecyclerView에 업데이트
         plantsList.clear()
         plantsList.addAll(plants)
         archiveAdapter.notifyDataSetChanged()
     }
 
     private fun loadPlants() {
-        // 현재 사용자의 식물 데이터를 Firestore에서 가져오기
         val currentUser = auth.currentUser ?: return
 
         firestore.collection("plants")
@@ -142,57 +136,45 @@ class ArchiveFragment : Fragment() {
             .orderBy("registrationDate", Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { snapshot ->
-                val ownPlants = mutableListOf<Plant>()
-                for (doc in snapshot.documents) {
-                    doc.toObject(Plant::class.java)?.let { plant ->
-                        ownPlants.add(plant)
-                    }
-                }
-                updateArchiveList(ownPlants) // 본인의 데이터만 표시
+                val ownPlants = snapshot.documents.mapNotNull { it.toObject(Plant::class.java) }
+                updateArchiveList(ownPlants)
             }
             .addOnFailureListener { e ->
-                Log.e("ArchiveFragment", "Error fetching own plants: ${e.message}")
+                Log.e("ArchiveFragment", "식물 데이터 로드 실패: ${e.message}")
             }
     }
 
     private fun loadFriendPlants(friendUserId: String) {
-        // Firestore에서 특정 친구의 식물 데이터를 가져오기
         firestore.collection("plants")
             .whereEqualTo("userId", friendUserId)
             .orderBy("registrationDate", Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { snapshot ->
-                val friendPlants = mutableListOf<Plant>()
-                for (doc in snapshot.documents) {
-                    doc.toObject(Plant::class.java)?.let { plant ->
-                        friendPlants.add(plant)
-                    }
-                }
-                updateArchiveList(friendPlants) // 친구의 데이터로 대체
+                val friendPlants = snapshot.documents.mapNotNull { it.toObject(Plant::class.java) }
+                updateArchiveList(friendPlants)
             }
             .addOnFailureListener { e ->
-                Log.e("ArchiveFragment", "Error fetching friend plants: ${e.message}")
+                Log.e("ArchiveFragment", "친구 데이터 로드 실패: ${e.message}")
             }
     }
 
     private fun loadFriends() {
-        // Firestore에서 친구 데이터 가져오기
         val currentUser = auth.currentUser ?: return
 
-        firestore.collection("users").document(currentUser.uid)
+        firestore.collection("users")
+            .document(currentUser.uid)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    Log.w("ArchiveFragment", "Listen failed.", e)
+                    Log.w("ArchiveFragment", "친구 정보 로드 실패", e)
                     return@addSnapshotListener
                 }
 
                 val friendEmails = snapshot?.get("friends") as? List<String> ?: emptyList()
-                if (friendEmails.isEmpty()) {
-                    Log.d("ArchiveFragment", "No friends found.")
-                    return@addSnapshotListener
+                if (friendEmails.isNotEmpty()) {
+                    fetchFriendDetails(friendEmails)
+                } else {
+                    Log.d("ArchiveFragment", "등록된 친구가 없습니다.")
                 }
-
-                fetchFriendDetails(friendEmails)
             }
     }
 
@@ -212,7 +194,7 @@ class ArchiveFragment : Fragment() {
                 friendAdapter.notifyDataSetChanged()
             }
             .addOnFailureListener { e ->
-                Log.e("ArchiveFragment", "Error fetching friend details: ${e.message}")
+                Log.e("ArchiveFragment", "친구 정보 로드 실패: ${e.message}")
             }
     }
 
