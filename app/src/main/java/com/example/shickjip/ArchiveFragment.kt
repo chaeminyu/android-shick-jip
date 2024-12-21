@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.FragmentArchiveBinding
 import com.example.shickjip.models.Plant
+import com.example.shickjip.ui.FriendAddFragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -61,6 +62,12 @@ class ArchiveFragment : Fragment() {
 
         setupRecyclerView()
         loadPlants()
+
+        binding.addFriendButton.setOnClickListener {
+            val fragment = FriendAddFragment()
+            fragment.show(parentFragmentManager, "FriendAddFragment")
+            Log.d("ArchiveFragment", "+ 버튼 클릭됨: 모달 표시")
+        }
     }
 
     private fun setupRecyclerView() {

@@ -36,6 +36,11 @@ class ArchiveAdapter(
         }
 
         holder.binding.apply {
+            nickname.text = plant.nickname.ifEmpty {
+                val defaultNickname = "식물 ${position + 1}" // position 기반
+                plant.nickname = defaultNickname
+                defaultNickname
+            }
             officialName.text = plant.name
             registrationDate.text = SimpleDateFormat("yyyy.MM.dd", Locale.getDefault())
                 .format(Date(plant.registrationDate))
