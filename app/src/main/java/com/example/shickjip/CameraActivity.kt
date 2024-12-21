@@ -22,6 +22,8 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.CameraControl
+import androidx.camera.core.CameraInfo
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -34,6 +36,7 @@ import com.example.shickjip.api.RetrofitClient
 import com.example.shickjip.api.translate.RetrofitTranslate
 import com.example.shickjip.databinding.ActivityCameraBinding
 import com.example.shickjip.models.Plant
+import com.google.android.gms.tasks.Task
 import com.google.android.material.animation.AnimatorSetCompat.playTogether
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuth.*
@@ -59,7 +62,10 @@ class CameraActivity : AppCompatActivity() {
     private var isCameraActive = false // 카메라 활성 상태 추적
     private var imageCapture: ImageCapture? = null
     private var lensFacing = CameraSelector.LENS_FACING_BACK
-    private var flashMode = ImageCapture.FLASH_MODE_OFF
+    private lateinit var cameraControl: CameraControl
+    private lateinit var cameraInfo: CameraInfo
+    private var isFlashOn = false // 플래시 상태를 추적
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,17 +128,14 @@ class CameraActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
 
     }
+
     private fun toggleFlash() {
-        flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
+        isFlashOn = !isFlashOn
+        if (isFlashOn) {
             binding.flashButton.setImageResource(R.drawable.ic_flash_on)
-            ImageCapture.FLASH_MODE_ON
         } else {
             binding.flashButton.setImageResource(R.drawable.ic_flash_off)
-            ImageCapture.FLASH_MODE_OFF
         }
-
-        // 캡쳐 설정 업데이트
-        imageCapture?.flashMode = flashMode
     }
 
     private fun toggleCamera() {
@@ -158,10 +161,8 @@ class CameraActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                Log.d("Debug2", "Camera permission granted")
                 startCamera()
             } else {
-                Log.d("Debug2", "Camera permission denied")
                 Toast.makeText(this, "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
                 finish()
             }
@@ -175,38 +176,43 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun takePhoto() {
-        Log.d("Debug2", "takePhoto called")
-
         val imageCapture = imageCapture ?: return
 
         val photoFile = File(
             getOutputDirectory(),
             "Plant_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(System.currentTimeMillis())}.jpg"
         )
-        Log.d("Debug2", "Photo file created: ${photoFile.absolutePath}")
 
         val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        // 플래시 사용 설정
+        if (isFlashOn && ::cameraControl.isInitialized) {
+            cameraControl.enableTorch(true) // 플래시 켜기
+        }
 
         imageCapture.takePicture(
             outputOptions,
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    Log.d("Debug2", "Photo saved successfully: ${photoFile.absolutePath}")
+                    val savedUri = Uri.fromFile(photoFile)
+                    Log.d("CameraActivity", "사진 저장 성공: $savedUri")
 
-                    // 로딩 오버레이를 표시하고 API 호출 시작
-                    showScanOverlay(ModalState.LOADING) // 오버레이 로딩 상태 표시
+                    // 촬영 후 플래시 끄기
+                    if (isFlashOn && ::cameraControl.isInitialized) {
+                        cameraControl.enableTorch(false) // 플래시 끄기
+                    }
+
+                    // 로딩 모달 표시 및 식물 인식 시작
                     lifecycleScope.launch {
-                        Log.d("Debug2", "Launching identifyPlantWithApi")
+                        showScanOverlay(ModalState.LOADING)
                         identifyPlantWithApi(photoFile)
                     }
                 }
 
                 override fun onError(exc: ImageCaptureException) {
-                    Log.e("Debug2", "Photo capture failed: ${exc.message}", exc)
-
-                    // 실패 상태를 오버레이에 표시
-                    showScanOverlay(ModalState.FAILURE)
+                    Log.e("CameraActivity", "사진 저장 실패", exc)
+                    Toast.makeText(this@CameraActivity, "사진 저장 실패: ${exc.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -342,13 +348,16 @@ class CameraActivity : AppCompatActivity() {
                             val translatedDescription = translateDescriptionWithPlaceholder(description, displayName, "KO")
                             Log.d("Debug2", "Translated description: $translatedDescription")
 
-                            hideScanOverlay()
+                            // 식물 정보 모달을 표시하기 직전에 성공 모달을 닫음
                             showPlantInfoOverlay(
                                 title = translatedTitle,
                                 description = translatedDescription,
                                 photoFile = optimizedFile
                             )
 
+                            hideScanOverlay() // 성공 모달 닫기
+
+                            // 결과 반환
                             val result = Intent().apply {
                                 putExtra("plant_name", translatedTitle)
                                 putExtra("plant_description", translatedDescription)
@@ -410,45 +419,41 @@ class CameraActivity : AppCompatActivity() {
 
     // 카메라 시작 메서드
     private fun startCamera() {
-        Log.d("Debug2", "startCamera called")
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
-            // cameraProvider 초기화
             cameraProvider = cameraProviderFuture.get()
-            Log.d("Debug2", "CameraProvider initialized")
 
-            // Preview 설정
             val preview = Preview.Builder()
                 .build()
                 .also {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
-            // ImageCapture 설정
             imageCapture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
-            Log.d("Debug2", "imageCapture initialized")
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
 
             try {
-                // 기존 카메라 바인딩 해제
                 cameraProvider.unbindAll()
-
-                // 새 카메라 바인딩
-                val cameraSelector = CameraSelector.Builder()
-                    .requireLensFacing(lensFacing)
-                    .build()
-                cameraProvider.bindToLifecycle(
+                val camera = cameraProvider.bindToLifecycle(
                     this,
                     cameraSelector,
                     preview,
                     imageCapture
                 )
-                isCameraActive = true
-                Log.d("Debug2", "Camera bound to lifecycle")
-            } catch (e: Exception) {
-                Log.e("Debug2", "Camera binding failed", e)
+
+                // CameraControl 및 CameraInfo 초기화
+                cameraControl = camera.cameraControl
+                cameraInfo = camera.cameraInfo
+                isCameraActive = true // 카메라 활성화 상태 업데이트
+
+
+            } catch (exc: Exception) {
+                Log.e("CameraActivity", "카메라 바인딩 실패", exc)
             }
         }, ContextCompat.getMainExecutor(this))
     }
@@ -544,8 +549,10 @@ class CameraActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     registerPlant(title, description, photoFile)
-                    // 등록 후 홈 화면으로 이동
-                    navigateToHome()
+                    hideScanOverlay() // 모달을 먼저 숨김
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        navigateToHome() // 모달이 닫힌 후 화면 전환
+                    }, 300) // 모달 숨김 애니메이션 시간 이후 실행
                 } catch (e: Exception) {
                     Log.e("Register", "Plant registration failed", e)
                     Toast.makeText(this@CameraActivity, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -563,7 +570,6 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-    // 카메라 일시 중지
     private fun pauseCamera() {
         if (::cameraProvider.isInitialized && isCameraActive) {
             cameraProvider.unbindAll()
@@ -572,33 +578,38 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-    // 카메라 재시작
     private fun resumeCamera() {
         if (::cameraProvider.isInitialized && !isCameraActive) {
             startCamera()
+            isCameraActive = true
             Log.d("Debug2", "Camera resumed")
         }
     }
 
     private fun navigateToHome() {
-        val intent = Intent(this, HomeActivity::class.java) // Replace HomeActivity with your actual home activity
-        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-        startActivity(intent)
-        finish() // 현재 액티비티 종료
+        finish() // CameraActivity 종료
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out) // 전환 애니메이션 설정
     }
 
-    private suspend fun registerPlant(title: String, description: String, photoFile: File) {
+    private fun registerPlant(title: String, description: String, photoFile: File) {
         val currentUser = FirebaseAuth.getInstance().currentUser ?: run {
             Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
-
         // Step 1: Firebase Storage에 이미지 업로드
         val uploadedImageUrl = uploadImageToFirebaseStorage(photoFile)
 
         if (uploadedImageUrl != null) {
             // Step 2: Firestore에 데이터 저장
             saveToFirestore(currentUser.uid, uploadedImageUrl, title, description)
+              .addOnSuccessListener {
+                  Toast.makeText(this, "도감 등록 성공! 경험치 +10, 코인 +10", Toast.LENGTH_SHORT).show()
+                  navigateToHome() // Firebase 작업 성공 시 홈으로 이동
+              }
+              .addOnFailureListener { e ->
+                  Log.e("RegisterPlant", "도감 등록 실패", e)
+                  Toast.makeText(this, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+              }
         } else {
             withContext(Dispatchers.Main) {
                 Toast.makeText(this@CameraActivity, "이미지 업로드 실패", Toast.LENGTH_SHORT).show()
@@ -626,7 +637,6 @@ class CameraActivity : AppCompatActivity() {
             }
         }
     }
-
     private fun saveImageToInternalStorage(photoFile: File): File {
         val imageFile = File(filesDir, "Plant_${System.currentTimeMillis()}.jpg")
         photoFile.inputStream().use { input ->
@@ -637,28 +647,44 @@ class CameraActivity : AppCompatActivity() {
         return imageFile
     }
 
-    private fun saveToFirestore(userId: String, imagePath: String, title: String, description: String) {
+    private fun saveToFirestore(
+      userId: String, 
+      imagePath: String, 
+      title: String, 
+      description: String
+    ): Task<Void> {
+        val firestore = FirebaseFirestore.getInstance() {
         val plant = Plant(
             id = UUID.randomUUID().toString(),
             userId = userId,
             name = title,
             description = description,
-            imagePath = imagePath, // Firebase Storage 다운로드 URL 저장
+            imagePath = imagePath,/ Firebase Storage 다운로드 URL 저장
             captureDate = System.currentTimeMillis(),
             registrationDate = System.currentTimeMillis()
         )
 
-        FirebaseFirestore.getInstance()
-            .collection("plants")
-            .document(plant.id)
-            .set(plant)
-            .addOnSuccessListener {
-                Toast.makeText(this, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Firestore 데이터 저장 실패", e)
-                Toast.makeText(this, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        val userRef = firestore.collection("users").document(userId)
+        val plantRef = firestore.collection("plants").document(plant.id)
+
+        return firestore.runTransaction { transaction ->
+            // 사용자 데이터 읽기
+            val snapshot = transaction.get(userRef)
+            val currentExperience = snapshot.getLong("experience") ?: 0
+            val currentCoins = snapshot.getLong("coins") ?: 0
+
+            // 경험치와 코인 증가
+            val updatedExperience = currentExperience + 15
+            val updatedCoins = currentCoins + 10
+
+            // 도감 데이터 저장 및 사용자 데이터 업데이트
+            transaction.set(plantRef, plant)
+            transaction.update(userRef, "experience", updatedExperience)
+            transaction.update(userRef, "coins", updatedCoins)
+
+            // 반환값을 명시적으로 Void로 설정
+            null as Void?
+        }
     }
 
     private fun handleError(message: String) {
@@ -679,8 +705,13 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun hideScanOverlay() {
-        // 오버레이 숨김
+        // 모달 상태 초기화
+        resetModalState()
+        // 모달 숨김
         binding.modalOverlay.visibility = View.GONE
+
+        // 터치 차단 해제
+        binding.touchBlocker.visibility = View.GONE
     }
 
     private fun updateScanOverlayState(state: ModalState) {
@@ -717,6 +748,12 @@ class CameraActivity : AppCompatActivity() {
                     title = "식물을 찾지 못했어요...",
                     message = "다시 한 번 촬영해볼까요?"
                 )
+
+                // 실패 상태도 일정 시간 후 자동 닫기
+                Handler(Looper.getMainLooper()).postDelayed({
+                    hideScanOverlay()
+                    resumeCamera() // 실패 후 카메라 재시작
+                }, 2500) // 2.5초 유지
             }
         }
     }

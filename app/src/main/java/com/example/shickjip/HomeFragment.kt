@@ -11,6 +11,7 @@ import android.os.Looper
 import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.style.ForegroundColorSpan
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +19,8 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import com.example.shickjip.databinding.FragmentHomeBinding
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import me.relex.circleindicator.CircleIndicator3
 
 class HomeFragment : Fragment() {
@@ -28,10 +31,9 @@ class HomeFragment : Fragment() {
     private lateinit var handler: Handler
     private lateinit var bannerAdapter: BannerAdapter
 
-    private var experience = 1980 // 현재 경험치
-    private val levels = listOf(0, 500, 1000, 1500, 2000) // 레벨 범위
+    private val levels = listOf(0, 100, 300, 800, 1800) // 레벨 범위
     private val levelNames = listOf("초보", "루키", "고수", "전문가", "그 자체") // 레벨 이름
-    private val levelColors = listOf("#9F8731", "#F2C50E", "#24a8e0", "#9f1fd1", "#4DC03B") // 레벨별 색상
+    private val levelColors = listOf("#9F8731", "#edc00c", "#24a8e0", "#9f1fd1", "#4DC03B") // 레벨별 색상
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,6 +41,7 @@ class HomeFragment : Fragment() {
     ): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val view = binding.root
+
 
         // 초기 상태에서 툴팁 숨김
         binding.tooltipContainer.visibility = View.GONE
@@ -71,6 +74,9 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Firestore에서 사용자 데이터 불러오기
+        loadUserExperienceAndName()
+
         // 배너 데이터 설정
         val banners = listOf(
             Banner(R.drawable.banner_flower, "Editor's pick! 오늘의 식물", "성년의 날을 기념하며 전해지는 장미는 단순한 꽃을 넘어 새로운 시작을 응원하는 특별한 의미를 지니고 있습니다. 오늘, 성년의 날을 맞아 스스로의 성장을 축하하며 장미의 향기와 함께 새로운 여정을 시작해보세요!"),
@@ -95,6 +101,42 @@ class HomeFragment : Fragment() {
             val intent = Intent(requireContext(), CameraActivity::class.java)
             startActivity(intent)
         }
+
+        binding.homeTree.setOnTouchListener { _, _ ->
+            // Pivot 설정: 아래가 고정
+            binding.homeTree.apply {
+                pivotX = width / 2f // 가로 중앙
+                pivotY = height.toFloat() // 세로 하단 고정
+            }
+
+            // 흔들기 애니메이션 실행
+            swayTree(binding.homeTree)
+            true
+        }
+
+    }
+
+
+    // Firestore 리스너 추가
+    private fun loadUserExperienceAndName() {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        val userRef = FirebaseFirestore.getInstance().collection("users").document(currentUser.uid)
+
+        userRef.addSnapshotListener { snapshot, e ->
+            if (e != null) {
+                Log.e("HomeFragment", "Failed to fetch user data", e)
+                return@addSnapshotListener
+            }
+
+            if (snapshot != null && snapshot.exists()) {
+                val experience = snapshot.getLong("experience") ?: 0
+                val username = snapshot.getString("username") ?: "사용자" // 기본값 설정
+                updateLevelUI(experience.toInt(), username)
+            }
+        }
+    }
+
+    private fun updateLevelUI(experience: Int, username: String) {
         // 경험치로 현재 레벨 계산
         val currentLevelIndex = calculateLevel(experience)
         val currentLevel = levelNames[currentLevelIndex]
@@ -115,24 +157,21 @@ class HomeFragment : Fragment() {
             levels.last() - levels[levels.size - 2]
         }
 
-        // 퍼센트 값 계산 (초과 경험치도 반영)
+        // 퍼센트 값 계산
         val progressPercent = if (currentLevelIndex == levels.size - 1) {
-            // 최대 레벨일 경우 초과 퍼센트 계산
             (currentExpInLevel.toFloat() / maxExpInLevel) * 100
         } else {
             (currentExpInLevel.toFloat() / maxExpInLevel) * 100
         }
 
-        // ProgressBar 업데이트 (100% 이상 표시 가능)
+        // ProgressBar 업데이트
         binding.progressBar.progress = progressPercent.toInt()
 
         // 레벨 상태에 따른 뷰 설정
         if (currentLevelIndex == levels.size - 1) {
-            // 최대 레벨일 경우
             binding.progressBar.visibility = View.INVISIBLE
             binding.sunIcon.visibility = View.VISIBLE
 
-            // sunIcon 클릭 리스너 설정 (최고 레벨 상태)
             binding.sunIcon.setOnClickListener {
                 if (binding.tooltipContainer.visibility == View.GONE) {
                     fadeIn(binding.tooltipContainer)
@@ -141,12 +180,10 @@ class HomeFragment : Fragment() {
                 }
             }
         } else {
-            // 최대 레벨이 아닐 경우
             binding.progressBar.visibility = View.VISIBLE
             binding.sunIcon.visibility = View.GONE
             binding.progressBar.progress = progressPercent.toInt().coerceAtMost(100)
 
-            // ProgressBar 클릭 리스너 설정
             binding.progressBar.setOnClickListener {
                 if (binding.tooltipContainer.visibility == View.GONE) {
                     fadeIn(binding.tooltipContainer)
@@ -155,7 +192,8 @@ class HomeFragment : Fragment() {
                 }
             }
         }
-        // TextView 업데이트 (퍼센트 출력 형식 변경)
+
+        // TextView 업데이트
         val epsilon = 0.0001f
         val progressText = if (progressPercent % 1 < epsilon || 1 - (progressPercent % 1) < epsilon) {
             "${currentLevel}\n${progressPercent.toInt()}%"
@@ -166,24 +204,10 @@ class HomeFragment : Fragment() {
 
         // 안내 메시지 업데이트
         val isMaxLevel = currentLevelIndex == levels.size - 1
-        val username = "수진" // 예시 사용자 이름
         updateTitleText(username, currentLevel, currentLevelColor)
         updateTooltipText(nextLevel, nextLevelColor, isMaxLevel, currentExpInLevel)
-
-
-        binding.homeTree.setOnTouchListener { _, _ ->
-            // Pivot 설정: 아래가 고정
-            binding.homeTree.apply {
-                pivotX = width / 2f // 가로 중앙
-                pivotY = height.toFloat() // 세로 하단 고정
-            }
-
-            // 흔들기 애니메이션 실행
-            swayTree(binding.homeTree)
-            true
-        }
-
     }
+
 
     private fun swayTree(treeView: View) {
 

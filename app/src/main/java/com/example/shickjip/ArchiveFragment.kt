@@ -100,19 +100,10 @@ class ArchiveFragment : Fragment() {
         // 식물 RecyclerView 어댑터 설정
         archiveAdapter = ArchiveAdapter(plantsList) { plantId ->
             Log.d("ArchiveFragment", "Navigating to PlantDetailFragment with plantId: $plantId")
-
-            // ViewPager 숨기기
-            requireActivity().findViewById<ViewPager2>(R.id.viewPager).visibility = View.GONE
-
-            // shopFragmentContainer를 먼저 보이게 설정
-            requireActivity().findViewById<FrameLayout>(R.id.shopFragmentContainer).visibility = View.VISIBLE
-
-            // Fragment 전환
-            requireActivity().supportFragmentManager.beginTransaction()
-                .replace(R.id.shopFragmentContainer, PlantDetailFragment.newInstance(plantId))
-                .addToBackStack(null)
-                .commit()
+            val detailFragment = PlantDetailFragment.newInstance(plantId)
+            (activity as? HomeActivity)?.navigateToFragment(detailFragment)
         }
+
         binding.archiveList.apply {
             layoutManager = GridLayoutManager(context, 2)
             adapter = archiveAdapter
