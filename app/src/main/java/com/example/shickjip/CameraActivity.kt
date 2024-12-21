@@ -593,11 +593,38 @@ class CameraActivity : AppCompatActivity() {
             return
         }
 
-        // Step 1: 파일을 내부 저장소에 저장
-        val savedFile = saveImageToInternalStorage(photoFile)
+        // Step 1: Firebase Storage에 이미지 업로드
+        val uploadedImageUrl = uploadImageToFirebaseStorage(photoFile)
 
-        // Step 2: Firestore에 데이터 저장
-        saveToFirestore(currentUser.uid, savedFile.absolutePath, title, description)
+        if (uploadedImageUrl != null) {
+            // Step 2: Firestore에 데이터 저장
+            saveToFirestore(currentUser.uid, uploadedImageUrl, title, description)
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@CameraActivity, "이미지 업로드 실패", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private suspend fun uploadImageToFirebaseStorage(photoFile: File): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val storageRef = FirebaseStorage.getInstance().reference
+                val imageRef = storageRef.child("images/${photoFile.name}")
+
+                val uploadTask = imageRef.putFile(Uri.fromFile(photoFile)).await()
+                Log.d("FirebaseStorage", "Image uploaded successfully: ${photoFile.name}")
+
+                // 다운로드 URL 가져오기
+                val downloadUrl = imageRef.downloadUrl.await().toString()
+                Log.d("FirebaseStorage", "Download URL: $downloadUrl")
+
+                downloadUrl
+            } catch (e: Exception) {
+                Log.e("FirebaseStorage", "Failed to upload image", e)
+                null
+            }
+        }
     }
 
     private fun saveImageToInternalStorage(photoFile: File): File {
@@ -610,13 +637,13 @@ class CameraActivity : AppCompatActivity() {
         return imageFile
     }
 
-    private fun saveToFirestore(userId: String, filePath: String, title: String, description: String) {
+    private fun saveToFirestore(userId: String, imagePath: String, title: String, description: String) {
         val plant = Plant(
             id = UUID.randomUUID().toString(),
             userId = userId,
             name = title,
             description = description,
-            imagePath = filePath, // 내부 저장소 경로를 저장
+            imagePath = imagePath, // Firebase Storage 다운로드 URL 저장
             captureDate = System.currentTimeMillis(),
             registrationDate = System.currentTimeMillis()
         )

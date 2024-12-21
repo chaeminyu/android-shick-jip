@@ -23,6 +23,7 @@ firebaseFirestoreKtx = "25.1.1"
 firebaseFirestore = "25.1.1"
 firebaseAppcheckDebug = "18.0.0"
 firebaseAuthKtx = "23.1.0"
+firebaseStorage = "21.0.1"
 
 
 [libraries]
@@ -56,6 +57,7 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
 firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version.ref = "firebaseAppcheckDebug" }
 firebase-auth-ktx = { group = "com.google.firebase", name = "firebase-auth-ktx", version.ref = "firebaseAuthKtx" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
