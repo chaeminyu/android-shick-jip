@@ -54,6 +54,9 @@ import java.util.regex.Pattern
 
 class CameraActivity : AppCompatActivity() {
     private lateinit var binding: ActivityCameraBinding
+    private lateinit var cameraProvider: ProcessCameraProvider
+
+    private var isCameraActive = false // 카메라 활성 상태 추적
     private var imageCapture: ImageCapture? = null
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private var flashMode = ImageCapture.FLASH_MODE_OFF
@@ -111,6 +114,13 @@ class CameraActivity : AppCompatActivity() {
         binding.switchCameraButton.setOnClickListener {
             toggleCamera()
         }
+
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        cameraProviderFuture.addListener({
+            cameraProvider = cameraProviderFuture.get()
+            startCamera()
+        }, ContextCompat.getMainExecutor(this))
+
     }
     private fun toggleFlash() {
         flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
@@ -397,28 +407,35 @@ class CameraActivity : AppCompatActivity() {
     }
 
     // 카메라 권한 체크 및 카메라 시작
+
+    // 카메라 시작 메서드
     private fun startCamera() {
         Log.d("Debug2", "startCamera called")
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
+            // cameraProvider 초기화
+            cameraProvider = cameraProviderFuture.get()
             Log.d("Debug2", "CameraProvider initialized")
 
+            // Preview 설정
             val preview = Preview.Builder()
                 .build()
                 .also {
                     it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
                 }
 
+            // ImageCapture 설정
             imageCapture = ImageCapture.Builder()
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                 .build()
             Log.d("Debug2", "imageCapture initialized")
 
             try {
+                // 기존 카메라 바인딩 해제
                 cameraProvider.unbindAll()
+
+                // 새 카메라 바인딩
                 val cameraSelector = CameraSelector.Builder()
                     .requireLensFacing(lensFacing)
                     .build()
@@ -428,6 +445,7 @@ class CameraActivity : AppCompatActivity() {
                     preview,
                     imageCapture
                 )
+                isCameraActive = true
                 Log.d("Debug2", "Camera bound to lifecycle")
             } catch (e: Exception) {
                 Log.e("Debug2", "Camera binding failed", e)
@@ -487,6 +505,13 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun showPlantInfoOverlay(title: String, description: String, photoFile: File) {
+
+        // 터치 차단 활성화 (카메라 화면 터치 차단)
+        binding.touchBlocker.visibility = View.VISIBLE
+
+        // 카메라 멈추기
+        pauseCamera()
+
         // 제목 및 설명 길이 제한
         val maxTotalLength = 400
         val normalizedDescription = description.replace("\n", " ")
@@ -531,8 +556,27 @@ class CameraActivity : AppCompatActivity() {
 
         // 닫기 버튼 클릭 리스너
         binding.closeButton.setOnClickListener {
+            binding.touchBlocker.visibility = View.GONE // 터치 차단 해제
             // 카메라 액티비티에 남아 있도록 오버레이만 숨김
             binding.plantInfoOverlay.visibility = View.GONE
+            resumeCamera()
+        }
+    }
+
+    // 카메라 일시 중지
+    private fun pauseCamera() {
+        if (::cameraProvider.isInitialized && isCameraActive) {
+            cameraProvider.unbindAll()
+            isCameraActive = false
+            Log.d("Debug2", "Camera paused")
+        }
+    }
+
+    // 카메라 재시작
+    private fun resumeCamera() {
+        if (::cameraProvider.isInitialized && !isCameraActive) {
+            startCamera()
+            Log.d("Debug2", "Camera resumed")
         }
     }
 
@@ -595,9 +639,16 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun showScanOverlay(state: ModalState) {
+        // 터치 차단 활성화 (카메라 화면 터치 차단)
+        binding.touchBlocker.visibility = View.VISIBLE
+
+
         // 오버레이 표시
         binding.modalOverlay.visibility = View.VISIBLE
         updateScanOverlayState(state)
+        if (state == ModalState.LOADING) {
+            pauseCamera() // 로딩 상태에서 카메라 정지
+        }
     }
 
     private fun hideScanOverlay() {

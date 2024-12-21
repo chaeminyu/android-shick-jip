@@ -81,12 +81,21 @@
             android:src="@drawable/ic_switch_camera" />
     </LinearLayout>
 
+    <FrameLayout
+        android:id="@+id/touch_blocker"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true" />
+
     <!-- 모달 오버레이 -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/modalOverlay"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#80000000"
+        android:background="@color/transparent"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -195,7 +204,7 @@
         android:id="@+id/plantInfoOverlay"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#80000000"
+        android:background="@color/transparent"
         android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
