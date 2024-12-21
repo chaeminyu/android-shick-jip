@@ -1,7 +1,13 @@
 package com.example.shickjip
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface.*
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -25,6 +31,10 @@ class MyPageFragment : Fragment() {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private var currentUser: UserProfile? = null
+
+    private val levels = listOf(0, 100, 300, 800, 1800) // 레벨 범위
+    private val levelNames = listOf("초보", "루키", "고수", "전문가", "그 자체") // 레벨 이름
+    private val levelColors = listOf("#9F8731", "#edc00c", "#24a8e0", "#9f1fd1", "#4DC03B") // 레벨별 색상
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -63,44 +73,56 @@ class MyPageFragment : Fragment() {
     private fun updateUI(userProfile: UserProfile?) {
         userProfile?.let { profile ->
             binding.apply {
+                // 환영 메시지 업데이트
                 welcomeText.text = "${profile.username}님, 환영합니다!"
                 coinAmount.text = profile.coins.toString()
 
-                // 레벨 프로그레스바 업데이트
-                val nextLevelExp = calculateNextLevelExp(profile.level)
-                val progress = (profile.experience.toFloat() / nextLevelExp * 100).toInt()
+                // 현재 레벨 및 진행 상황 계산
+                val currentLevelIndex = calculateLevel(profile.experience)
+                val currentLevel = levelNames[currentLevelIndex]
+                val currentLevelColor = levelColors[currentLevelIndex]
+                val nextLevelExp = levels.getOrNull(currentLevelIndex + 1) ?: levels.last()
+
+                // 현재 레벨 내 경험치와 최대 경험치 계산
+                val currentExpInLevel = profile.experience - levels[currentLevelIndex]
+                val maxExpInLevel = nextLevelExp - levels[currentLevelIndex]
+                val progress = (currentExpInLevel.toFloat() / maxExpInLevel * 100).toInt()
                 levelProgressBar.progress = progress
+
+                // 프로그레스바 색상을 레벨 색상에 맞게 설정
+                levelProgressBar.progressTintList = android.content.res.ColorStateList.valueOf(
+                    Color.parseColor(currentLevelColor)
+                )
+
+                // 레벨 텍스트를 색상과 볼드 스타일로 업데이트
+                val spannable = SpannableStringBuilder("식물 ")
+                val start = spannable.length
+                spannable.append(currentLevel)
+                spannable.setSpan(
+                    ForegroundColorSpan(Color.parseColor(currentLevelColor)),
+                    start,
+                    spannable.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                spannable.setSpan(
+                    StyleSpan(BOLD),
+                    start,
+                    spannable.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                levelText.text = spannable
             }
         }
     }
-    private fun calculateNextLevelExp(currentLevel: Int): Int {
-        // 레벨별 필요 경험치 계산 로직
-        return when (currentLevel) {
-            1 -> 500
-            2 -> 1000
-            3 -> 1500
-            4 -> 2000
-            else -> 2500
-        }
-    }
-    private fun processCoinCharge(amount: Int) {
-        val currentUser = auth.currentUser ?: return
 
-        firestore.runTransaction { transaction ->
-            val userRef = firestore.collection("users").document(currentUser.uid)
-            val snapshot = transaction.get(userRef)
-            val currentCoins = snapshot.getLong("coins") ?: 0
-
-            transaction.update(userRef, "coins", currentCoins + amount)
-            // 경험치도 함께 증가
-            val currentExp = snapshot.getLong("experience") ?: 0
-            transaction.update(userRef, "experience", currentExp + (amount / 10))
-        }.addOnSuccessListener {
-            Toast.makeText(context, "${amount}코인이 충전되었습니다", Toast.LENGTH_SHORT).show()
-            loadUserProfile() // UI 새로고침
-        }.addOnFailureListener { e ->
-            Toast.makeText(context, "충전 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+    // 경험치를 기준으로 현재 레벨 계산
+    private fun calculateLevel(experience: Long): Int {
+        for (i in levels.indices.reversed()) {
+            if (experience >= levels[i]) {
+                return i
+            }
         }
+        return 0 // 경험치가 최소 레벨보다 낮을 경우 "초보" 반환
     }
 
     private fun updateUserProfile(newPassword: String, newNickname: String) {
@@ -151,15 +173,6 @@ class MyPageFragment : Fragment() {
             }
     }
 
-    private fun updateLevelProgress() {
-        // 예시: 현재 경험치가 1980이고 다음 레벨까지 2000이 필요한 경우
-        val currentExp = 1980
-        val maxExp = 2000
-        val progress = (currentExp.toFloat() / maxExp * 100).toInt()
-
-        binding.levelProgressBar.max = 100
-        binding.levelProgressBar.progress = progress
-    }
 
     private fun setupClickListeners() {
         // 식물 인식하기 버튼 (CardView)
@@ -302,12 +315,6 @@ class MyPageFragment : Fragment() {
         }
     }
 
-
-    private fun updateCoinBalance(addedAmount: Int) {
-        val currentBalance = binding.coinAmount.text.toString().toIntOrNull() ?: 0
-        val newBalance = currentBalance + addedAmount
-        binding.coinAmount.text = newBalance.toString()
-    }
 
     private fun showEditProfileDialog() {
         val dialog = BottomSheetDialog(requireContext())
