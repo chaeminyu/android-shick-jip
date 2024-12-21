@@ -109,7 +109,7 @@ class ArchiveFragment : Fragment() {
 
     private fun setupFriendRecyclerView() {
         friendAdapter = FriendsAdapter(friendsList) { friend ->
-            Toast.makeText(context, "Clicked: ${friend.name}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "${friend.name}의 도감 보기", Toast.LENGTH_SHORT).show()
         }
         binding.friendsList.apply {
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
@@ -164,15 +164,17 @@ class ArchiveFragment : Fragment() {
 
     private fun fetchFriendDetails(friendEmails: List<String>) {
         firestore.collection("users")
-            .whereIn("email", friendEmails)
+            .whereIn("email", friendEmails) // 이메일 리스트로 검색
             .get()
             .addOnSuccessListener { result ->
                 friendsList.clear()
                 for (document in result) {
-                    val friend = document.toObject(Friend::class.java)
+                    val friend = document.toObject(Friend::class.java).apply {
+                        name = document.getString("username") ?: "Unknown User" // username 추가
+                    }
                     friendsList.add(friend)
                 }
-                friendAdapter.notifyDataSetChanged()
+                friendAdapter.notifyDataSetChanged() // RecyclerView 업데이트
             }
             .addOnFailureListener { e ->
                 Log.e("ArchiveFragment", "Error fetching friend details: ${e.message}")

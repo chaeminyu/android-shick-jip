@@ -1,7 +1,7 @@
 package com.example.shickjip.models
 
 data class Friend(
-    val name: String = "",
+    var name: String = "",
     val email: String = "",
     val profileImage: String = ""
 )
