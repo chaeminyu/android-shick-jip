@@ -646,7 +646,7 @@ class CameraActivity : AppCompatActivity() {
             val currentCoins = snapshot.getLong("coins") ?: 0
 
             // 경험치와 코인 증가
-            val updatedExperience = currentExperience + 10
+            val updatedExperience = currentExperience + 15
             val updatedCoins = currentCoins + 10
 
             // 도감 데이터 저장 및 사용자 데이터 업데이트

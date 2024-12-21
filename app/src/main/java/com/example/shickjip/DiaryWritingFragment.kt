@@ -150,6 +150,26 @@ class DiaryWritingFragment : Fragment() {
                     .document(plantId)
                     .update("diaryEntries", diaryEntries)
                     .addOnSuccessListener {
+                        // 경험치 및 코인 업데이트
+                        val currentUser = FirebaseAuth.getInstance().currentUser
+                        if (currentUser != null) {
+                            val userRef = firestore.collection("users").document(currentUser.uid)
+                            firestore.runTransaction { transaction ->
+                                val snapshot = transaction.get(userRef)
+                                val currentExperience = snapshot.getLong("experience") ?: 0
+                                val currentCoins = snapshot.getLong("coins") ?: 0
+
+                                // 경험치와 코인 증가
+                                transaction.update(userRef, "experience", currentExperience + 10)
+                                transaction.update(userRef, "coins", currentCoins + 5)
+                            }.addOnSuccessListener {
+                                Toast.makeText(context, "경험치 +10, 코인 +5 획득!", Toast.LENGTH_SHORT).show()
+                            }.addOnFailureListener { e ->
+                                Log.e("DiaryWriting", "경험치 및 코인 업데이트 실패", e)
+                                Toast.makeText(context, "경험치/코인 업데이트 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+
                         Toast.makeText(context, "일기가 저장되었습니다.", Toast.LENGTH_SHORT).show()
                         Handler(Looper.getMainLooper()).postDelayed({
                             if (isAdded && !isRemoving) {
@@ -169,7 +189,6 @@ class DiaryWritingFragment : Fragment() {
                 Toast.makeText(context, "데이터 로드에 실패했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
-
     private fun saveImageToInternalStorage(uri: Uri): File {
         val contextResolver = requireContext().contentResolver
         val inputStream = contextResolver.openInputStream(uri)

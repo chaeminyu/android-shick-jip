@@ -31,10 +31,9 @@ class HomeFragment : Fragment() {
     private lateinit var handler: Handler
     private lateinit var bannerAdapter: BannerAdapter
 
-    private var experience = 1980 // 현재 경험치
     private val levels = listOf(0, 100, 300, 800, 1800) // 레벨 범위
     private val levelNames = listOf("초보", "루키", "고수", "전문가", "그 자체") // 레벨 이름
-    private val levelColors = listOf("#9F8731", "#F2C50E", "#24a8e0", "#9f1fd1", "#4DC03B") // 레벨별 색상
+    private val levelColors = listOf("#9F8731", "#edc00c", "#24a8e0", "#9f1fd1", "#4DC03B") // 레벨별 색상
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,

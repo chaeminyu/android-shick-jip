@@ -238,15 +238,43 @@ class PlantDetailFragment : Fragment() {
                             val diaryEntry = it.diaryEntries.find { entry -> entry.id == diaryEntryId }
                             diaryEntry?.comments?.add(comment)
 
+                            // 댓글 Firestore에 저장
                             firestore.collection("plants").document(plantId)
                                 .set(plant)
                                 .addOnSuccessListener {
+                                    // 댓글 UI 업데이트
                                     updateComments(container, diaryEntry?.comments ?: listOf())
+
+                                    // 경험치 5 추가
+                                    val userRef = firestore.collection("users").document(currentUser.uid)
+                                    firestore.runTransaction { transaction ->
+                                        val snapshot = transaction.get(userRef)
+                                        val currentExperience = snapshot.getLong("experience") ?: 0
+                                        transaction.update(userRef, "experience", currentExperience + 5)
+                                    }.addOnSuccessListener {
+                                        Toast.makeText(
+                                            context,
+                                            "댓글 작성 완료! 경험치 +5 획득!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }.addOnFailureListener { e ->
+                                        Log.e("PlantDetailFragment", "경험치 업데이트 실패", e)
+                                        Toast.makeText(
+                                            context,
+                                            "경험치 업데이트에 실패했습니다.",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 }
                         }
                     }
+                    .addOnFailureListener { e ->
+                        Log.e("PlantDetailFragment", "플랜트 데이터를 가져오는데 실패", e)
+                        Toast.makeText(context, "댓글 추가 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
             }
             .addOnFailureListener { e ->
+                Log.e("PlantDetailFragment", "사용자 정보를 가져오는데 실패", e)
                 Toast.makeText(context, "사용자 정보를 가져오는데 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
     }
