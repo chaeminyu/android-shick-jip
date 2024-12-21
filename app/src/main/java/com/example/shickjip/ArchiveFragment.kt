@@ -70,6 +70,7 @@ class ArchiveFragment : Fragment() {
         binding.btnProfilePicture.setOnClickListener {
             loadPlants() // 내 데이터 로드
             updateProfileName("My Collection") // 프로필 이름 업데이트
+            updateArchiveProfileImage(isMyProfile = true) // 본인의 프로필 이미지로 설정
             friendAdapter.resetSelection() // 친구 선택 초기화
             Log.d("ArchiveFragment", "내 프로필 클릭됨")
         }
@@ -91,6 +92,7 @@ class ArchiveFragment : Fragment() {
         friendAdapter = FriendsAdapter(friendsList) { friend ->
             loadFriendPlants(friend.userId)
             updateProfileName("${friend.name}'s Collection")
+            updateArchiveProfileImage(isMyProfile = false) // 친구의 프로필 이미지로 설정
             Log.d("ArchiveFragment", "${friend.name}의 데이터를 로드 중...")
         }
 
@@ -114,12 +116,22 @@ class ArchiveFragment : Fragment() {
                     val username = it.getString("username") ?: "사용자"
                     binding.myName.text = username
                     updateProfileName("My Collection")
+                    updateArchiveProfileImage(isMyProfile = true) // 본인의 프로필 이미지로 설정
                 }
             }
     }
 
     private fun updateProfileName(name: String) {
         binding.profileName.text = name
+    }
+
+    private fun updateArchiveProfileImage(isMyProfile: Boolean) {
+        val imageResource = if (isMyProfile) {
+            R.drawable.profile_placeholder // 본인의 프로필 이미지
+        } else {
+            R.drawable.ic_profile_default // 친구의 기본 프로필 이미지
+        }
+        binding.profileImage.setImageResource(imageResource)
     }
 
     private fun updateArchiveList(plants: List<Plant>) {
