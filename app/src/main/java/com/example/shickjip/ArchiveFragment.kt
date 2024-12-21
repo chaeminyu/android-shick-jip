@@ -71,7 +71,7 @@ class ArchiveFragment : Fragment() {
             requireActivity().findViewById<ViewPager2>(R.id.viewPager).visibility = View.GONE
 
             requireActivity().supportFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, PlantDetailFragment.newInstance(plantId))
+                .replace(R.id.shopFragmentContainer, PlantDetailFragment.newInstance(plantId))
                 .addToBackStack(null)
                 .commit()
         }

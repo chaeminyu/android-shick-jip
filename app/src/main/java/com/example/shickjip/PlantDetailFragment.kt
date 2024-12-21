@@ -60,7 +60,7 @@ class PlantDetailFragment : Fragment() {
 
             // DiaryWritingFragment로 전환
             parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, DiaryWritingFragment.newInstance(plantId))
+                .replace(R.id.shopFragmentContainer, DiaryWritingFragment.newInstance(plantId))
                 .addToBackStack("diary_writing")  // 백스택에 이름을 지정하여 추가
                 .commit()
         }

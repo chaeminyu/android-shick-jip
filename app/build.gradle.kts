@@ -25,6 +25,9 @@ android {
         // API Key 설정
         val key = project.property("PLANT_API_KEY").toString()
         buildConfigField("String", "PLANT_API_KEY", "\"$key\"")
+        val translatekey = project.property("DEEPL_API_KEY").toString()
+        buildConfigField("String", "DEEPL_API_KEY", "\"$translatekey\"")
+
     }
 
     buildTypes {
@@ -91,6 +94,12 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
+
+    // deepL translate
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.9.1") // 로그 확인용
+
 
     //로그인용
     implementation("com.google.firebase:firebase-firestore:25.1.1")

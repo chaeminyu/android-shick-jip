@@ -27,10 +27,6 @@
       
         <activity
             android:name=".HomeActivity" />
-
-        <activity
-            android:name=".ShopFragment"
-            android:theme="@style/ShopActivityTheme" />
       
         <activity
             android:name=".LoginActivity"
