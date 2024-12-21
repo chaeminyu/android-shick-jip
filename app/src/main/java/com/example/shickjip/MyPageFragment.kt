@@ -138,7 +138,8 @@ class MyPageFragment : Fragment() {
                 currentUser.delete()
                     .addOnSuccessListener {
                         Toast.makeText(context, "회원 탈퇴가 완료되었습니다", Toast.LENGTH_SHORT).show()
-                        startActivity(Intent(requireContext(), MainActivity::class.java))
+                        // JoinActivity로 이동
+                        startActivity(Intent(requireContext(), JoinActivity::class.java))
                         requireActivity().finish()
                     }
                     .addOnFailureListener { e ->
