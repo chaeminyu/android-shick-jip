@@ -347,13 +347,16 @@ class CameraActivity : AppCompatActivity() {
                             val translatedDescription = translateDescriptionWithPlaceholder(description, displayName, "KO")
                             Log.d("Debug2", "Translated description: $translatedDescription")
 
-                            hideScanOverlay()
+                            // 식물 정보 모달을 표시하기 직전에 성공 모달을 닫음
                             showPlantInfoOverlay(
                                 title = translatedTitle,
                                 description = translatedDescription,
                                 photoFile = optimizedFile
                             )
 
+                            hideScanOverlay() // 성공 모달 닫기
+
+                            // 결과 반환
                             val result = Intent().apply {
                                 putExtra("plant_name", translatedTitle)
                                 putExtra("plant_description", translatedDescription)
@@ -445,6 +448,8 @@ class CameraActivity : AppCompatActivity() {
                 // CameraControl 및 CameraInfo 초기화
                 cameraControl = camera.cameraControl
                 cameraInfo = camera.cameraInfo
+                isCameraActive = true // 카메라 활성화 상태 업데이트
+
 
             } catch (exc: Exception) {
                 Log.e("CameraActivity", "카메라 바인딩 실패", exc)
@@ -562,7 +567,6 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-    // 카메라 일시 중지
     private fun pauseCamera() {
         if (::cameraProvider.isInitialized && isCameraActive) {
             cameraProvider.unbindAll()
@@ -571,10 +575,10 @@ class CameraActivity : AppCompatActivity() {
         }
     }
 
-    // 카메라 재시작
     private fun resumeCamera() {
         if (::cameraProvider.isInitialized && !isCameraActive) {
             startCamera()
+            isCameraActive = true
             Log.d("Debug2", "Camera resumed")
         }
     }
@@ -689,6 +693,11 @@ class CameraActivity : AppCompatActivity() {
                     title = "식물을 찾지 못했어요...",
                     message = "다시 한 번 촬영해볼까요?"
                 )
+
+                // 실패 상태도 일정 시간 후 자동 닫기
+                Handler(Looper.getMainLooper()).postDelayed({
+                    hideScanOverlay()
+                }, 2500) // 2.5초 유지
             }
         }
     }
