@@ -30,11 +30,9 @@ class ArchiveFragment : Fragment() {
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-    // 기존 기능: 식물 데이터
     private lateinit var archiveAdapter: ArchiveAdapter
     private val plantsList = mutableListOf<Plant>()
 
-    // 추가된 기능: 친구 데이터
     private lateinit var friendAdapter: FriendsAdapter
     private val friendsList = mutableListOf<Friend>()
 
@@ -74,8 +72,8 @@ class ArchiveFragment : Fragment() {
         setupFriendRecyclerView()
 
         // Firestore 데이터 로드
-        loadPlants()
-        loadFriends()
+        loadPlants() // 기본적으로 본인의 데이터를 로드
+        loadFriends() // 친구 목록을 로드
 
         // 친구 추가 버튼 클릭 이벤트
         binding.addFriendButton.setOnClickListener {
@@ -86,6 +84,7 @@ class ArchiveFragment : Fragment() {
     }
 
     private fun setupPlantRecyclerView() {
+        // 식물 RecyclerView 어댑터 설정
         archiveAdapter = ArchiveAdapter(plantsList) { plantId ->
             Log.d("ArchiveFragment", "Navigating to PlantDetailFragment with plantId: $plantId")
 
@@ -108,8 +107,11 @@ class ArchiveFragment : Fragment() {
     }
 
     private fun setupFriendRecyclerView() {
+        // 친구 RecyclerView 어댑터 설정
         friendAdapter = FriendsAdapter(friendsList) { friend ->
-            Toast.makeText(context, "${friend.name}의 도감 보기", Toast.LENGTH_SHORT).show()
+            // 친구 프로필 클릭 시 해당 친구의 데이터를 로드하여 archiveList 업데이트
+            loadFriendPlants(friend.userId)
+            Toast.makeText(context, "${friend.name}의 데이터를 불러옵니다.", Toast.LENGTH_SHORT).show()
         }
         binding.friendsList.apply {
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
@@ -117,31 +119,57 @@ class ArchiveFragment : Fragment() {
         }
     }
 
+    private fun updateArchiveList(plants: List<Plant>) {
+        // 가져온 식물 데이터를 RecyclerView에 업데이트
+        plantsList.clear()
+        plantsList.addAll(plants)
+        archiveAdapter.notifyDataSetChanged()
+    }
+
     private fun loadPlants() {
+        // 현재 사용자의 식물 데이터를 Firestore에서 가져오기
         val currentUser = auth.currentUser ?: return
 
         firestore.collection("plants")
             .whereEqualTo("userId", currentUser.uid)
             .orderBy("registrationDate", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.w("ArchiveFragment", "Listen failed.", e)
-                    return@addSnapshotListener
-                }
-
-                if (snapshot != null && !snapshot.isEmpty) {
-                    plantsList.clear()
-                    for (doc in snapshot.documents) {
-                        doc.toObject(Plant::class.java)?.let { plant ->
-                            plantsList.add(plant)
-                        }
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val ownPlants = mutableListOf<Plant>()
+                for (doc in snapshot.documents) {
+                    doc.toObject(Plant::class.java)?.let { plant ->
+                        ownPlants.add(plant)
                     }
-                    archiveAdapter.notifyDataSetChanged()
                 }
+                updateArchiveList(ownPlants) // 본인의 데이터만 표시
+            }
+            .addOnFailureListener { e ->
+                Log.e("ArchiveFragment", "Error fetching own plants: ${e.message}")
+            }
+    }
+
+    private fun loadFriendPlants(friendUserId: String) {
+        // Firestore에서 특정 친구의 식물 데이터를 가져오기
+        firestore.collection("plants")
+            .whereEqualTo("userId", friendUserId)
+            .orderBy("registrationDate", Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val friendPlants = mutableListOf<Plant>()
+                for (doc in snapshot.documents) {
+                    doc.toObject(Plant::class.java)?.let { plant ->
+                        friendPlants.add(plant)
+                    }
+                }
+                updateArchiveList(friendPlants) // 친구의 데이터로 대체
+            }
+            .addOnFailureListener { e ->
+                Log.e("ArchiveFragment", "Error fetching friend plants: ${e.message}")
             }
     }
 
     private fun loadFriends() {
+        // Firestore에서 친구 데이터 가져오기
         val currentUser = auth.currentUser ?: return
 
         firestore.collection("users").document(currentUser.uid)
@@ -157,36 +185,28 @@ class ArchiveFragment : Fragment() {
                     return@addSnapshotListener
                 }
 
-                // 친구 상세 정보 가져오기
                 fetchFriendDetails(friendEmails)
             }
     }
 
     private fun fetchFriendDetails(friendEmails: List<String>) {
         firestore.collection("users")
-            .whereIn("email", friendEmails) // 이메일 리스트로 검색
+            .whereIn("email", friendEmails)
             .get()
             .addOnSuccessListener { result ->
                 friendsList.clear()
                 for (document in result) {
                     val friend = document.toObject(Friend::class.java).apply {
-                        name = document.getString("username") ?: "Unknown User" // username 추가
-                        userId = document.id // Firestore 문서 ID를 userid로 사용
+                        name = document.getString("username") ?: "Unknown User"
+                        userId = document.id
                     }
                     friendsList.add(friend)
                 }
-                friendAdapter.notifyDataSetChanged() // RecyclerView 업데이트
+                friendAdapter.notifyDataSetChanged()
             }
             .addOnFailureListener { e ->
                 Log.e("ArchiveFragment", "Error fetching friend details: ${e.message}")
             }
-    }
-
-    private fun isNetworkAvailable(): Boolean {
-        val connectivityManager = context?.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkCapabilities = connectivityManager.activeNetwork ?: return false
-        val actNw = connectivityManager.getNetworkCapabilities(networkCapabilities) ?: return false
-        return actNw.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || actNw.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
     }
 
     override fun onDestroyView() {
