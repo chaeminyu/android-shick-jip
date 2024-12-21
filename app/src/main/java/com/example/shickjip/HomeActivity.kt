@@ -3,6 +3,7 @@ package com.example.shickjip
 import android.os.Bundle
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.ActivityHomeBinding
@@ -16,6 +17,15 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHomeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // 프래그먼트 백스택 변경 리스너
+        supportFragmentManager.addOnBackStackChangedListener {
+            if (supportFragmentManager.backStackEntryCount == 0) {
+                binding.viewPager.visibility = View.VISIBLE
+                binding.shopFragmentContainer.visibility = View.GONE
+            } else {
+                binding.shopFragmentContainer.visibility = View.VISIBLE
+            }
+        }
 
         // FragmentContainer가 항상 최상위에 오도록 설정
         binding.shopFragmentContainer.elevation = 2f
@@ -69,6 +79,20 @@ class HomeActivity : AppCompatActivity() {
             }
         }
     }
+    // 프래그먼트 전환을 위한 헬퍼 메서드
+    fun navigateToFragment(fragment: Fragment, addToBackStack: Boolean = true) {
+        binding.viewPager.visibility = View.GONE
+        binding.shopFragmentContainer.visibility = View.VISIBLE
+
+        val transaction = supportFragmentManager.beginTransaction()
+            .replace(R.id.shopFragmentContainer, fragment)
+
+        if (addToBackStack) {
+            transaction.addToBackStack(null)
+        }
+
+        transaction.commit()
+    }
 
     fun showShopFragment() {
         val shopFragment = ShopFragment()
@@ -97,6 +121,21 @@ class HomeActivity : AppCompatActivity() {
                 binding.shopFragmentContainer.visibility = View.GONE
                 binding.bottomNavigationView.visibility = View.VISIBLE
             }, 300) // 애니메이션 지속 시간과 동일하게 설정
+        }
+    }
+    fun showFragmentAndHideViewPager(fragment: Fragment) {
+        binding.viewPager.visibility = View.GONE
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.shopFragmentContainer, fragment)
+            .addToBackStack(null)
+            .commit()
+    }
+
+    override fun onBackPressed() {
+        if (supportFragmentManager.backStackEntryCount > 0) {
+            supportFragmentManager.popBackStack()
+        } else {
+            super.onBackPressed()
         }
     }
 }
