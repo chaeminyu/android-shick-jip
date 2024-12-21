@@ -36,6 +36,7 @@ import com.example.shickjip.api.RetrofitClient
 import com.example.shickjip.api.translate.RetrofitTranslate
 import com.example.shickjip.databinding.ActivityCameraBinding
 import com.example.shickjip.models.Plant
+import com.google.android.gms.tasks.Task
 import com.google.android.material.animation.AnimatorSetCompat.playTogether
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuth.*
@@ -548,8 +549,10 @@ class CameraActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     registerPlant(title, description, photoFile)
-                    // 등록 후 홈 화면으로 이동
-                    navigateToHome()
+                    hideScanOverlay() // 모달을 먼저 숨김
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        navigateToHome() // 모달이 닫힌 후 화면 전환
+                    }, 300) // 모달 숨김 애니메이션 시간 이후 실행
                 } catch (e: Exception) {
                     Log.e("Register", "Plant registration failed", e)
                     Toast.makeText(this@CameraActivity, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -584,25 +587,28 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun navigateToHome() {
-        val intent = Intent(this, HomeActivity::class.java) // Replace HomeActivity with your actual home activity
-        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
-        startActivity(intent)
-        finish() // 현재 액티비티 종료
+        finish() // CameraActivity 종료
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out) // 전환 애니메이션 설정
     }
 
-    private suspend fun registerPlant(title: String, description: String, photoFile: File) {
+    private fun registerPlant(title: String, description: String, photoFile: File) {
         val currentUser = FirebaseAuth.getInstance().currentUser ?: run {
             Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // Step 1: 파일을 내부 저장소에 저장
         val savedFile = saveImageToInternalStorage(photoFile)
 
-        // Step 2: Firestore에 데이터 저장
         saveToFirestore(currentUser.uid, savedFile.absolutePath, title, description)
+            .addOnSuccessListener {
+                Toast.makeText(this, "도감 등록 성공! 경험치 +10, 코인 +10", Toast.LENGTH_SHORT).show()
+                navigateToHome() // Firebase 작업 성공 시 홈으로 이동
+            }
+            .addOnFailureListener { e ->
+                Log.e("RegisterPlant", "도감 등록 실패", e)
+                Toast.makeText(this, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
     }
-
     private fun saveImageToInternalStorage(photoFile: File): File {
         val imageFile = File(filesDir, "Plant_${System.currentTimeMillis()}.jpg")
         photoFile.inputStream().use { input ->
@@ -613,28 +619,44 @@ class CameraActivity : AppCompatActivity() {
         return imageFile
     }
 
-    private fun saveToFirestore(userId: String, filePath: String, title: String, description: String) {
+    private fun saveToFirestore(
+        userId: String,
+        filePath: String,
+        title: String,
+        description: String
+    ): Task<Void> {
+        val firestore = FirebaseFirestore.getInstance()
         val plant = Plant(
             id = UUID.randomUUID().toString(),
             userId = userId,
             name = title,
             description = description,
-            imagePath = filePath, // 내부 저장소 경로를 저장
+            imagePath = filePath,
             captureDate = System.currentTimeMillis(),
             registrationDate = System.currentTimeMillis()
         )
 
-        FirebaseFirestore.getInstance()
-            .collection("plants")
-            .document(plant.id)
-            .set(plant)
-            .addOnSuccessListener {
-                Toast.makeText(this, "도감에 등록되었습니다!", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Firestore 데이터 저장 실패", e)
-                Toast.makeText(this, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        val userRef = firestore.collection("users").document(userId)
+        val plantRef = firestore.collection("plants").document(plant.id)
+
+        return firestore.runTransaction { transaction ->
+            // 사용자 데이터 읽기
+            val snapshot = transaction.get(userRef)
+            val currentExperience = snapshot.getLong("experience") ?: 0
+            val currentCoins = snapshot.getLong("coins") ?: 0
+
+            // 경험치와 코인 증가
+            val updatedExperience = currentExperience + 10
+            val updatedCoins = currentCoins + 10
+
+            // 도감 데이터 저장 및 사용자 데이터 업데이트
+            transaction.set(plantRef, plant)
+            transaction.update(userRef, "experience", updatedExperience)
+            transaction.update(userRef, "coins", updatedCoins)
+
+            // 반환값을 명시적으로 Void로 설정
+            null as Void?
+        }
     }
 
     private fun handleError(message: String) {
@@ -655,8 +677,13 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun hideScanOverlay() {
-        // 오버레이 숨김
+        // 모달 상태 초기화
+        resetModalState()
+        // 모달 숨김
         binding.modalOverlay.visibility = View.GONE
+
+        // 터치 차단 해제
+        binding.touchBlocker.visibility = View.GONE
     }
 
     private fun updateScanOverlayState(state: ModalState) {
@@ -697,6 +724,7 @@ class CameraActivity : AppCompatActivity() {
                 // 실패 상태도 일정 시간 후 자동 닫기
                 Handler(Looper.getMainLooper()).postDelayed({
                     hideScanOverlay()
+                    resumeCamera() // 실패 후 카메라 재시작
                 }, 2500) // 2.5초 유지
             }
         }
