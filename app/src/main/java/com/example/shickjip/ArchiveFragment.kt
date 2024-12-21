@@ -83,10 +83,13 @@ class ArchiveFragment : Fragment() {
             Log.d("ArchiveFragment", "+ 버튼 클릭됨: 모달 표시")
         }
 
-        // 내 프로필 클릭 시 자신의 식물 로드
+        // 내 프로필 클릭 시 자신의 식물 로드 및 배경 복원
         binding.btnProfilePicture.setOnClickListener {
             loadPlants() // 내 프로필 클릭 시 자신의 데이터를 다시 로드
             Log.d("ArchiveFragment", "내 프로필 클릭됨: 내 식물 데이터 로드")
+
+            // 내 프로필 배경을 원래대로 복원
+            binding.btnProfilePicture.setBackgroundResource(R.drawable.myprofile_background)
 
             // 친구 목록에서 선택된 배경 초기화
             friendAdapter.resetSelection()
@@ -122,6 +125,9 @@ class ArchiveFragment : Fragment() {
             // 친구 프로필 클릭 시 해당 친구의 데이터를 로드하여 archiveList 업데이트
             loadFriendPlants(friend.userId)
             Toast.makeText(context, "${friend.name}의 데이터를 불러옵니다.", Toast.LENGTH_SHORT).show()
+
+            // 내 프로필 배경을 null로 설정
+            binding.btnProfilePicture.setBackgroundResource(0)  // 배경을 null로 설정하여 기본 상태로 되돌리기
         }
         binding.friendsList.apply {
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
