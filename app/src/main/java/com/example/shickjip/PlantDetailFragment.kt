@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -241,6 +242,8 @@ class PlantDetailFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         requireActivity().findViewById<ViewPager2>(R.id.viewPager).visibility = View.VISIBLE
+        requireActivity().findViewById<FrameLayout>(R.id.shopFragmentContainer).visibility = View.GONE
+        _binding = null
     }
 
 

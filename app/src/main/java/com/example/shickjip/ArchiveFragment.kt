@@ -8,6 +8,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
@@ -16,6 +17,7 @@ import androidx.viewpager2.widget.ViewPager2
 import com.example.shickjip.databinding.FragmentArchiveBinding
 import com.example.shickjip.models.Plant
 import com.example.shickjip.ui.FriendAddFragment
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -77,6 +79,10 @@ class ArchiveFragment : Fragment() {
             // ViewPager 숨기기
             requireActivity().findViewById<ViewPager2>(R.id.viewPager).visibility = View.GONE
 
+            // shopFragmentContainer를 먼저 보이게 설정
+            requireActivity().findViewById<FrameLayout>(R.id.shopFragmentContainer).visibility = View.VISIBLE
+
+            // Fragment 전환
             requireActivity().supportFragmentManager.beginTransaction()
                 .replace(R.id.shopFragmentContainer, PlantDetailFragment.newInstance(plantId))
                 .addToBackStack(null)
