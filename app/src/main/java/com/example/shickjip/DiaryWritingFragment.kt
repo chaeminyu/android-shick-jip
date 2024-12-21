@@ -69,8 +69,7 @@ class DiaryWritingFragment : Fragment() {
 
     private fun setupViews() {
         binding.apply {
-            binding.backButton.setOnClickListener {
-                // 식물 상세 페이지로 돌아가기
+            backButton.setOnClickListener {
                 parentFragmentManager.popBackStack()
             }
 
@@ -116,94 +115,33 @@ class DiaryWritingFragment : Fragment() {
         binding.saveButton.isEnabled = false
         binding.progressBar.visibility = View.VISIBLE
 
-        // 일기 엔트리 생성
-        val diaryEntry = DiaryEntry(
-            id = UUID.randomUUID().toString(),
-            content = content,
-            imagePath = null,  // 일단 null로 설정
-            date = System.currentTimeMillis()
-        )
+        // Coroutine 사용하여 Firestore와 Firebase Storage 처리
+        lifecycleScope.launch {
+            try {
+                val imageUrl = if (selectedImageUri != null) uploadImageToFirebase(selectedImageUri!!) else null
+                saveDiaryToFirestore(content, imageUrl)
+                Toast.makeText(context, "일기가 저장되었습니다.", Toast.LENGTH_SHORT).show()
 
-        // 현재 식물 문서 가져오기
-        firestore.collection("plants")
-            .document(plantId)
-            .get()
-            .addOnSuccessListener { documentSnapshot ->
-                val plant = documentSnapshot.toObject(Plant::class.java)
-                val diaryEntries = plant?.diaryEntries?.toMutableList() ?: mutableListOf()
+                // 경험치 및 코인 업데이트
+                updateUserRewards()
 
-                // 이미지가 있는 경우 저장
-                if (selectedImageUri != null) {
-                    try {
-                        val imageFile = saveImageToInternalStorage(selectedImageUri!!)
-                        diaryEntry.imagePath = imageFile.absolutePath
-                    } catch (e: Exception) {
-                        Log.e("DiaryWriting", "이미지 저장 실패", e)
+                // 페이지 닫기
+                Handler(Looper.getMainLooper()).postDelayed({
+                    if (isAdded && !isRemoving) {
+                        parentFragmentManager.popBackStack()
                     }
-                }
-
-                // 일기 추가
-                diaryEntries.add(diaryEntry)
-
-                // Firestore 업데이트
-                firestore.collection("plants")
-                    .document(plantId)
-                    .update("diaryEntries", diaryEntries)
-                    .addOnSuccessListener {
-                        // 경험치 및 코인 업데이트
-                        val currentUser = FirebaseAuth.getInstance().currentUser
-                        if (currentUser != null) {
-                            val userRef = firestore.collection("users").document(currentUser.uid)
-                            firestore.runTransaction { transaction ->
-                                val snapshot = transaction.get(userRef)
-                                val currentExperience = snapshot.getLong("experience") ?: 0
-                                val currentCoins = snapshot.getLong("coins") ?: 0
-
-                                // 경험치와 코인 증가
-                                transaction.update(userRef, "experience", currentExperience + 10)
-                                transaction.update(userRef, "coins", currentCoins + 5)
-                            }.addOnSuccessListener {
-                                Toast.makeText(context, "경험치 +10, 코인 +5 획득!", Toast.LENGTH_SHORT).show()
-                            }.addOnFailureListener { e ->
-                                Log.e("DiaryWriting", "경험치 및 코인 업데이트 실패", e)
-                                Toast.makeText(context, "경험치/코인 업데이트 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-
-                        Toast.makeText(context, "일기가 저장되었습니다.", Toast.LENGTH_SHORT).show()
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            if (isAdded && !isRemoving) {
-                                parentFragmentManager.popBackStack()
-                            }
-                        }, 300)
-                    }
-                    .addOnFailureListener { e ->
-                        binding.saveButton.isEnabled = true
-                        binding.progressBar.visibility = View.GONE
-                        Toast.makeText(context, "저장에 실패했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .addOnFailureListener { e ->
+                }, 300)
+            } catch (e: Exception) {
+                Log.e("DiaryWriting", "Error saving diary entry", e)
+                Toast.makeText(context, "저장에 실패했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
                 binding.saveButton.isEnabled = true
                 binding.progressBar.visibility = View.GONE
-                Toast.makeText(context, "데이터 로드에 실패했습니다: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-    }
-    private fun saveImageToInternalStorage(uri: Uri): File {
-        val contextResolver = requireContext().contentResolver
-        val inputStream = contextResolver.openInputStream(uri)
-            ?: throw Exception("이미지 스트림을 열 수 없습니다.")
-
-        val imageFile = File(requireContext().filesDir, "Diary_${System.currentTimeMillis()}.jpg")
-
-        imageFile.outputStream().use { output ->
-            inputStream.copyTo(output)
         }
-        return imageFile
     }
 
-    private suspend fun uploadImage(uri: Uri): String = withContext(Dispatchers.IO) {
-        val stream = requireContext().contentResolver.openInputStream(uri)
+    private suspend fun uploadImageToFirebase(uri: Uri): String = withContext(Dispatchers.IO) {
+        val inputStream = requireContext().contentResolver.openInputStream(uri)
             ?: throw IOException("Cannot open image file")
 
         val imageRef = storage.reference
@@ -211,8 +149,42 @@ class DiaryWritingFragment : Fragment() {
             .child(plantId)
             .child("${System.currentTimeMillis()}_${UUID.randomUUID()}")
 
-        imageRef.putStream(stream).await()
+        imageRef.putStream(inputStream).await()
         return@withContext imageRef.downloadUrl.await().toString()
+    }
+
+    private suspend fun saveDiaryToFirestore(content: String, imageUrl: String?) = withContext(Dispatchers.IO) {
+        val diaryEntry = DiaryEntry(
+            id = UUID.randomUUID().toString(),
+            content = content,
+            imagePath = imageUrl,
+            date = System.currentTimeMillis()
+        )
+
+        // 기존 데이터 로드
+        val plantRef = firestore.collection("plants").document(plantId)
+        val plantSnapshot = plantRef.get().await()
+        val plant = plantSnapshot.toObject(Plant::class.java)
+
+        val updatedDiaryEntries = plant?.diaryEntries?.toMutableList() ?: mutableListOf()
+        updatedDiaryEntries.add(diaryEntry)
+
+        // Firestore 업데이트
+        plantRef.update("diaryEntries", updatedDiaryEntries).await()
+    }
+
+    private suspend fun updateUserRewards() = withContext(Dispatchers.IO) {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return@withContext
+
+        val userRef = firestore.collection("users").document(currentUser.uid)
+        firestore.runTransaction { transaction ->
+            val snapshot = transaction.get(userRef)
+            val currentExperience = snapshot.getLong("experience") ?: 0
+            val currentCoins = snapshot.getLong("coins") ?: 0
+
+            transaction.update(userRef, "experience", currentExperience + 10)
+            transaction.update(userRef, "coins", currentCoins + 5)
+        }.await()
     }
 
     override fun onDestroyView() {
