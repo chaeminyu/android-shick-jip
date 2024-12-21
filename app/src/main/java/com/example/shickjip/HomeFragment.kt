@@ -1,8 +1,10 @@
 package com.example.shickjip
 
+import ThemeItem
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -16,6 +18,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.Fragment
 import com.example.shickjip.databinding.FragmentHomeBinding
@@ -264,6 +267,36 @@ class HomeFragment : Fragment() {
             .withEndAction {
                 view.visibility = View.GONE
             }
+    }
+
+    // 테마 적용 메서드
+    fun applyTheme(theme: ThemeItem) {
+        try {
+            // 배경색 설정
+            val backgroundColor = if (theme.backgroundColor is Int) {
+                theme.backgroundColor
+            } else {
+                Color.parseColor(theme.backgroundColor.toString())
+            }
+            binding.root.setBackgroundColor(backgroundColor)
+
+            // TextView 텍스트 색상 설정
+            binding.title.setTextColor(theme.textColor)
+
+            // MaterialButton 텍스트 색상 및 아이콘 색상 설정
+            binding.buttonWithIcon.setTextColor(theme.buttonTextColor)
+            binding.buttonWithIcon.iconTint = ColorStateList.valueOf(theme.buttonIconColor)
+
+            // 나머지 테마 적용 (이미지, ProgressBar 등)
+            binding.homeTree.setImageResource(theme.treeImageResId)
+            binding.homeHill.setImageResource(theme.hillImageResId)
+            binding.progressBar.setIndicatorColor(theme.progressBarIndicatorColor)
+            binding.progressBar.setTrackColor(theme.progressBarTrackColor)
+
+            Log.d("Theme", "테마가 적용되었습니다: ${theme.title}")
+        } catch (e: Exception) {
+            Log.e("Theme", "테마 적용 중 오류 발생: ${e.message}")
+        }
     }
 
     private fun calculateLevel(exp: Int): Int {

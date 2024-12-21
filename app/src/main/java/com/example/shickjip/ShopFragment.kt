@@ -1,6 +1,8 @@
 package com.example.shickjip
 
+import ThemeItem
 import android.content.Context
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -19,66 +21,33 @@ class ShopFragment : Fragment() {
     private var _binding: FragmentShopBinding? = null
     private val binding get() = _binding!!
 
+    // SharedPreferences 키
+    private val PREFS_NAME = "user_prefs"
+    private val KEY_USER_COIN = "user_coin"
+    private val KEY_PURCHASED_THEMES = "purchased_themes"
+
+
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
-
-    // SharedPreferences 키
-    private val PREFS_NAME = "user_prefs"
-    private val KEY_PURCHASED_THEMES = "purchased_themes"
-
-    // 특별 테마 설정
-    private val specialTheme = ThemeItem(
-        id = "special_theme_1",
-        title = "기간 한정 세일 테마!",
-        description = "11월 30일까지 반값 테마!",
-        imageResId = R.drawable.shop_special,
-        price = 300
-    )
-
-    // 기본 테마 리스트 설정
-    private val basicThemes = listOf(
-        ThemeItem(
-            id = "basic_theme_1",
-            title = "크리스마스 한정 산타 테마!",
-            description = "12/25까지 산타 테마를 즐겨보아요",
-            imageResId = R.drawable.theme_winter,
-            price = 500
-        ),
-        ThemeItem(
-            id = "basic_theme_2",
-            title = "크리스마스 한정 산타 테마!",
-            description = "12/25까지 산타 테마를 즐겨보아요",
-            imageResId = R.drawable.theme_winter,
-            price = 500
-        ),
-        ThemeItem(
-            id = "basic_theme_3",
-            title = "크리스마스 한정 산타 테마!",
-            description = "12/25까지 산타 테마를 즐겨보아요",
-            imageResId = R.drawable.theme_winter,
-            price = 500
-        ),
-        ThemeItem(
-            id = "basic_theme_4",
-            title = "크리스마스 한정 산타 테마!",
-            description = "12/25까지 산타 테마를 즐겨보아요",
-            imageResId = R.drawable.theme_winter,
-            price = 500
-        ),
-        ThemeItem(
-            id = "basic_theme_5",
-            title = "크리스마스 한정 산타 테마!",
-            description = "12/25까지 산타 테마를 즐겨보아요",
-            imageResId = R.drawable.theme_winter,
-            price = 500
-        )
-    )
-
     private lateinit var adapter: ThemeAdapter
+
     private var userCoins: Int = 0 // 코인 저장 변수 (전역 변수로 선언)
 
+    private lateinit var homeActivity: HomeActivity
+    private lateinit var specialTheme: ThemeItem
+    private lateinit var basicThemes: List<ThemeItem>
 
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (context is HomeActivity) {
+            homeActivity = context
+            specialTheme = homeActivity.specialTheme
+            basicThemes = homeActivity.basicThemes
+        } else {
+            throw IllegalStateException("ShopFragment must be attached to HomeActivity")
+        }
+    }
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -98,8 +67,9 @@ class ShopFragment : Fragment() {
         markPurchasedThemes(purchasedThemes)
 
         // RecyclerView 설정
+        // RecyclerView 설정
         adapter = ThemeAdapter(
-            themes = basicThemes,
+            themes = homeActivity.basicThemes,
             onPaymentClick = { themeItem ->
                 showPaymentDialog(themeItem)
             },
@@ -108,19 +78,31 @@ class ShopFragment : Fragment() {
             }
         )
 
+
         binding.recyclerViewThemes.layoutManager = GridLayoutManager(requireContext(), 2)
         binding.recyclerViewThemes.adapter = adapter
 
 
         // 한정 특가 테마 뷰 바인딩
-        binding.specialThemeTitle.text = specialTheme.title
-        binding.specialThemeDescription.text = specialTheme.description
-        binding.specialThemeImage.setImageResource(specialTheme.imageResId)
-        binding.price.text = "${specialTheme.price}"
+        specialTheme?.let { theme ->
+            binding.specialThemeTitle.text = theme.title
+            binding.specialThemeDescription.text = theme.description
+            binding.specialThemeImage.setImageResource(theme.imageResId)
+            binding.price.text = "${theme.price}"
 
+            binding.specialThemeButton.text = if (theme.isPurchased) "적용하기" else "구매하기"
+            binding.specialThemeButton.setOnClickListener {
+                if (theme.isPurchased) {
+                    applyTheme(theme)
+                } else {
+                    showPaymentDialog(theme)
+                }
+            }
+        }
 
         // 스페셜 테마 버튼 설정
         updateSpecialThemeButton()
+
 
         binding.specialThemeButton.setOnClickListener {
             if (specialTheme.isPurchased) {
@@ -141,6 +123,18 @@ class ShopFragment : Fragment() {
                 (activity as? HomeActivity)?.hideShopFragment()
             }
         })
+
+        // 버튼 클릭 이벤트: 기본 테마로 변경
+        binding.themeBackground.setOnClickListener {
+            applyDefaultTheme()
+        }
+    }
+
+    // 기본 테마 적용 메서드
+    private fun applyDefaultTheme() {
+        val defaultTheme = homeActivity.defaultTheme // HomeActivity에 정의된 기본 테마 가져오기
+        homeActivity.applyThemeToHome(defaultTheme) // 기본 테마를 적용
+        Toast.makeText(requireContext(), "기본 테마가 적용되었습니다!", Toast.LENGTH_SHORT).show()
     }
 
     private fun showPaymentDialog(themeItem: ThemeItem) {
@@ -151,21 +145,6 @@ class ShopFragment : Fragment() {
         }
 
         paymentDialog.show(parentFragmentManager, "PaymentDialog")
-    }
-
-    private fun processPayment(price: Int, themeItem: ThemeItem) {
-        if (userCoins >= price) {
-            val newBalance = userCoins - price
-            updateUserCoins(newBalance) // Firebase로 업데이트
-            savePurchasedTheme(themeItem.id) // 구매 정보는 SharedPreferences에 저장
-            themeItem.isPurchased = true
-            Toast.makeText(requireContext(), "결제가 완료되었습니다!", Toast.LENGTH_SHORT).show()
-
-            adapter.notifyDataSetChanged()
-            updateSpecialThemeButton()
-        } else {
-            Toast.makeText(requireContext(), "코인이 부족합니다.", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun loadUserCoins() {
@@ -185,6 +164,21 @@ class ShopFragment : Fragment() {
         }
     }
 
+    private fun processPayment(price: Int, themeItem: ThemeItem) {
+        if (userCoins >= price) {
+            val newBalance = userCoins - price
+            updateUserCoins(newBalance) // Firebase로 업데이트
+            savePurchasedTheme(themeItem.id) // 구매 정보는 SharedPreferences에 저장
+            themeItem.isPurchased = true
+            Toast.makeText(requireContext(), "결제가 완료되었습니다!", Toast.LENGTH_SHORT).show()
+
+            adapter.notifyDataSetChanged()
+            updateSpecialThemeButton()
+        } else {
+            Toast.makeText(requireContext(), "코인이 부족합니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun updateUserCoins(newCoins: Int) {
         val currentUser = auth.currentUser
         if (currentUser != null) {
@@ -201,8 +195,22 @@ class ShopFragment : Fragment() {
     }
 
 
+
     private fun applyTheme(themeItem: ThemeItem) {
         Toast.makeText(requireContext(), "${themeItem.title}가 적용되었습니다!", Toast.LENGTH_SHORT).show()
+
+        // SharedPreferences에 선택된 테마 저장
+        saveSelectedTheme(themeItem)
+
+        // 홈 프래그먼트에 테마 전달
+        homeActivity.applyThemeToHome(themeItem) // 이미 정의된 메서드 호출
+    }
+
+    private fun saveSelectedTheme(themeItem: ThemeItem) {
+        val sharedPrefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPrefs.edit()
+            .putString("selected_theme", themeItem.id) // 선택된 테마 ID 저장
+            .apply()
     }
 
 
@@ -213,6 +221,16 @@ class ShopFragment : Fragment() {
         basicThemes.forEach { theme ->
             theme.isPurchased = purchasedThemes.contains(theme.id)
         }
+    }
+
+    private fun getUserCoins(): Int {
+        val sharedPrefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPrefs.getInt(KEY_USER_COIN, 3000)
+    }
+
+    private fun saveUserCoins(coins: Int) {
+        val sharedPrefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPrefs.edit().putInt(KEY_USER_COIN, coins).apply()
     }
 
     private fun savePurchasedTheme(themeId: String) {
@@ -248,6 +266,10 @@ class ShopFragment : Fragment() {
                 showPaymentDialog(specialTheme)
             }
         }
+    }
+
+    fun getAllThemes(): List<ThemeItem> {
+        return listOf(specialTheme) + basicThemes
     }
 
     override fun onDestroyView() {

@@ -51,24 +51,27 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <!-- Circular ProgressBar -->
+
+        <!-- Title TextView inside ProgressBar -->
         <com.google.android.material.progressindicator.CircularProgressIndicator
             android:id="@+id/progress_bar"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:max="100"
             android:progress="78"
-            app:indicatorSize="140dp"
             app:indicatorColor="@color/green6"
-            app:layout_constraintDimensionRatio="1:1"
+            app:indicatorSize="140dp"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintDimensionRatio="1:1"
             app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.0"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.551"
             app:trackColor="@color/green4"
             app:trackCornerRadius="5dp"
             app:trackThickness="8dp" />
 
-        <!-- Title TextView inside ProgressBar -->
         <TextView
             android:id="@+id/title"
             android:layout_width="wrap_content"
