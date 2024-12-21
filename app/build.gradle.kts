@@ -70,6 +70,7 @@ dependencies {
 
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -103,6 +104,10 @@ dependencies {
 
     //로그인용
     implementation("com.google.firebase:firebase-firestore:25.1.1")
+
+    // 사진 저장용
+    implementation("com.google.firebase:firebase-storage:21.0.1")
+
     // 도감 날짜용
     implementation("com.github.bumptech.glide:glide:4.16.0")
     // 다이어리 작성

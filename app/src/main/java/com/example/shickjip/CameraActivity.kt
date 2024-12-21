@@ -596,18 +596,46 @@ class CameraActivity : AppCompatActivity() {
             Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
             return
         }
+        // Step 1: Firebase Storage에 이미지 업로드
+        val uploadedImageUrl = uploadImageToFirebaseStorage(photoFile)
 
-        val savedFile = saveImageToInternalStorage(photoFile)
+        if (uploadedImageUrl != null) {
+            // Step 2: Firestore에 데이터 저장
+            saveToFirestore(currentUser.uid, uploadedImageUrl, title, description)
+              .addOnSuccessListener {
+                  Toast.makeText(this, "도감 등록 성공! 경험치 +10, 코인 +10", Toast.LENGTH_SHORT).show()
+                  navigateToHome() // Firebase 작업 성공 시 홈으로 이동
+              }
+              .addOnFailureListener { e ->
+                  Log.e("RegisterPlant", "도감 등록 실패", e)
+                  Toast.makeText(this, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+              }
+        } else {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@CameraActivity, "이미지 업로드 실패", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
-        saveToFirestore(currentUser.uid, savedFile.absolutePath, title, description)
-            .addOnSuccessListener {
-                Toast.makeText(this, "도감 등록 성공! 경험치 +10, 코인 +10", Toast.LENGTH_SHORT).show()
-                navigateToHome() // Firebase 작업 성공 시 홈으로 이동
+    private suspend fun uploadImageToFirebaseStorage(photoFile: File): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val storageRef = FirebaseStorage.getInstance().reference
+                val imageRef = storageRef.child("images/${photoFile.name}")
+
+                val uploadTask = imageRef.putFile(Uri.fromFile(photoFile)).await()
+                Log.d("FirebaseStorage", "Image uploaded successfully: ${photoFile.name}")
+
+                // 다운로드 URL 가져오기
+                val downloadUrl = imageRef.downloadUrl.await().toString()
+                Log.d("FirebaseStorage", "Download URL: $downloadUrl")
+
+                downloadUrl
+            } catch (e: Exception) {
+                Log.e("FirebaseStorage", "Failed to upload image", e)
+                null
             }
-            .addOnFailureListener { e ->
-                Log.e("RegisterPlant", "도감 등록 실패", e)
-                Toast.makeText(this, "도감 등록 실패: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+        }
     }
     private fun saveImageToInternalStorage(photoFile: File): File {
         val imageFile = File(filesDir, "Plant_${System.currentTimeMillis()}.jpg")
@@ -620,18 +648,18 @@ class CameraActivity : AppCompatActivity() {
     }
 
     private fun saveToFirestore(
-        userId: String,
-        filePath: String,
-        title: String,
-        description: String
+      userId: String, 
+      imagePath: String, 
+      title: String, 
+      description: String
     ): Task<Void> {
-        val firestore = FirebaseFirestore.getInstance()
+        val firestore = FirebaseFirestore.getInstance() {
         val plant = Plant(
             id = UUID.randomUUID().toString(),
             userId = userId,
             name = title,
             description = description,
-            imagePath = filePath,
+            imagePath = imagePath,/ Firebase Storage 다운로드 URL 저장
             captureDate = System.currentTimeMillis(),
             registrationDate = System.currentTimeMillis()
         )
